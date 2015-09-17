@@ -89,6 +89,16 @@ classdef Record < RCM.Current.TimeSeries & handle
             r.ShortFileName=path((max(slashPos)+1):end);
             r.Path=path(1:max(slashPos));
         end
+        
+        function R = create(time, speed, direction)
+            R = RCM.HGAnalysis.Record;
+            
+            R.Time      = time;
+            R.Speed     = speed;
+            R.Direction = direction;
+            
+            R.calculateComponents;
+        end
          
     end
     

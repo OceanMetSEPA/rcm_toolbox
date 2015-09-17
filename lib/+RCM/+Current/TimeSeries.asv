@@ -463,60 +463,181 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             tpm = tidalPhaseStat(TS, property, 'std');
         end
         
+        function [fit1, rSq1, fit2, rSq2] = fitMeanSpeed2TidalRange(TS, varargin)
+            [fit1, rSq1, fit2, rSq2] = RCM.Current.TimeSeries.fitProperty2TidalRange(TS, TS.waterLevels, varargin{:})
+        end
+        
+%         function scaledTS = extendAndScale(TS, days, varargin)
+%             % Here's the logic for scaling.
+%             %
+%             % We use the sampled speed and pressure records to derive an
+%             % emprical, linear relationship between the tidal range in 
+%             % each flood/ebb phase and the mean speed experienced. We then
+%             % use this relationship, together with water levels obtained 
+%             % from Total Tide, to scale the current speeds through the 
+%             % extended time period.
+%             % 
+%             % To do this we truncate the sampled data to a single spring-neap 
+%             % cycle length so that it can be repeated through the extended
+%             % time period. We also repeat the water levels (from Total
+%             % Tide) for the sampling period through the extended time
+%             % period to provide a baseline against which the longer term
+%             % variations in water level can be measured. For each flood and
+%             % ebb phase in both the repeated and varying water level time 
+%             % series, we can now calculate the mean current speed based on
+%             % the empirical relationship established above. Then, for each
+%             % flood and ebb phase we can calculate a scaling factor by
+%             % dividing the mean current speed in the longer term (varying)
+%             % data set by the mean current speed in the repeated data set.
+%             % We then apply these scaling factors to the repeated speed 
+%             % records.
+%             
+%             generatePlot = 0;            
+%             tidalOnly    = 0;
+%             splitPhases  = 0;
+%             
+%             if ~isempty(varargin)
+%                 for i = 1:2:size(varargin,2) % only bother with odd arguments, i.e. the labels
+%                     switch varargin{i}
+%                       case 'plot'
+%                         generatePlot = varargin{i + 1};
+%                       case 'tidalOnly'
+%                         tidalOnly = varargin{i + 1};
+%                       case 'splitPhases'
+%                         splitPhases = varargin{i + 1};
+%                     end
+%                 end   
+%             end
+%             
+%             
+%             % Need to add support for tidal only and split phases
+%             
+%             % Get speed-range relationship
+%             if splitPhases
+%                 [fit1, rSq1, fit2, rSq2] = TS.fitMeanSpeed2TidalRange('metric', 'max', varargin{:});
+%             else
+%                 [fit, rSq] = TS.fitMeanSpeed2TidalRange('metric', 'max', varargin{:});
+%             end
+%             
+%             if isempty(TS.TotalTidePort)
+%                 TS.getTotalTidePort();
+%             end
+%             
+%             % Get heights from Total Tide for the period under consideration. 
+%             % Get records for both a day before and a day after the required 
+%             % time period. This ensures that we get slack water levels before 
+%             % and after the time period and therefore can calculate tidal 
+%             % phase ranges for every datapoint
+%             ttHeights = TotalTide.getStationHeights(TS.TotalTidePort, ...
+%                 datestr(TS.startTime-1,'dd/mm/yyyy'), days + 2, TS.timeIntervalSeconds/60);
+%             
+%             % Convert Total Tide data to a WaterLevel object
+%             ttWaterLevel = RCM.WaterLevel.TimeSeries.fromTotalTideStruct(ttHeights);
+%             
+%             % The Total Tide record starts at midnight the day prior to our
+%             % required time interval, so lets truncate it to start at the same time 
+%             % as our time series (well, the closest record).
+%             ttWaterLevel.truncateByTime('startTime', TS.startTime);
+%             
+%             % The Total Tide record spans a day longer than we need. Now
+%             % that we've set the tidal ranges, lets truncate to the total
+%             % number of days required.
+%             ttWaterLevel.truncateToDays(days);
+%             
+%             % Normalise the data to a mean of zero. This is not really
+%             % required as it doesnt affect the range between slack levels
+%             % but it is good practice.
+%             ttWaterLevel.normalise;
+% 
+%             % Create another long term water level record but this time based on 
+%             % the water levels during only the period covered by the current data
+%             % repeated through the required longer term time period
+%             
+%             % Clone of the long term Total Tide water levels
+%             refWaterLevel = ttWaterLevel.clone;
+%                         
+%             % Repeat the water levels in the first spring-neap cycle
+%             % through the required time period.
+%             refWaterLevel.repeatSpringNeapCycle(days);
+%             
+%             ttRanges = ttWaterLevel.ranges; 
+%             refRanges = refWaterLevel.ranges;
+%             noRanges = min(length(ttRanges), length(refRanges));
+%             
+%             % Now we have a long term water level record and a corresponding
+%             % repeated water level record
+%             if splitPhases
+%                 ttMeanFloodSpeeds  = polyval(fit1,abs(ttRanges(1:noRanges)));
+%                 refMeanFloodSpeeds = polyval(fit1,abs(refRanges(1:noRanges)));
+%                 
+%                 ttMeanEbbSpeeds  = polyval(fit2,abs(ttRanges(1:noRanges)));
+%                 refMeanEbbSpeeds = polyval(fit2,abs(refRanges(1:noRanges)));
+%                 
+%                 floodScales = ttMeanFloodSpeeds./refMeanFloodSpeeds;
+%                 ebbScales = ttMeanEbbSpeeds./refMeanEbbSpeeds;
+%                 
+%                 scales = floodScales;
+%                 
+%                 ebbIndexes = find(ttRanges < 0);
+%                 scales(ebbIndexes) = ebbScales(ebbIndexes);   
+%             else
+%                 ttMeanSpeeds  = polyval(fit,abs(ttRanges(1:noRanges)));
+%                 refMeanSpeeds = polyval(fit,abs(refRanges(1:noRanges)));
+%                 
+%                 scales = ttMeanSpeeds./refMeanSpeeds;
+%             end
+%             
+%             scaledTS = TS.clone;
+%             scaledTS.repeatSpringNeapCycle(days);
+%             
+%             speedProperty = 'Speed';
+%             
+%             if tidalOnly
+%                 speedProperty = 'SpeedTidal';
+%             end
+% 
+%             refSlackIndexes = refWaterLevel.slackIndexes;
+%             
+%             scaledTS.(speedProperty)(1:refSlackIndexes(1)-1,1) = scaledTS.(speedProperty)(1:refSlackIndexes(1)-1,1) * scales(1);
+%             
+%             for i = 1:length(refSlackIndexes)-1
+%                scaledTS.(speedProperty)(refSlackIndexes(i):refSlackIndexes(i+1)-1,1) = ...
+%                    scaledTS.(speedProperty)(refSlackIndexes(i):refSlackIndexes(i+1)-1,1) * scales(i);
+%             end
+%             
+%             if tidalOnly
+%                 [scaledTS.uTidal, scaledTS.vTidal] = RCM.Utils.spd2uv(scaledTS.SpeedTidal, scaledTS.DirectionTidal);  
+%                 
+%                 u_comp = scaledTS.uTidal + scaledTS.uNonTidal;
+%                 v_comp = scaledTS.vTidal + scaledTS.vNonTidal;
+%                 [scaledTS.Speed, scaledTS.Direction] = RCM.Utils.uv2spd(u_comp,v_comp);                
+%             end
+%             
+%             meanPressure = mean(scaledTS.Pressure);
+%             scaledTS.Pressure = ttWaterLevel.Height + meanPressure;
+%             scaledTS.clearDerivedProperties;
+%         end
+      
         function scaledTS = extendAndScale(TS, days, varargin)
             % Here's the logic for scaling.
             %
-            % We use the sampled speed and pressure records to derive an
-            % emprical, linear relationship between the tidal range in 
-            % each flood/ebb phase and the mean speed experienced. We then
-            % use this relationship, together with water levels obtained 
-            % from Total Tide, to scale the current speeds through the 
-            % extended time period.
-            % 
-            % To do this we truncate the sampled data to a single spring-neap 
-            % cycle length so that it can be repeated through the extended
-            % time period. We also repeat the water levels (from Total
-            % Tide) for the sampling period through the extended time
-            % period to provide a baseline against which the longer term
-            % variations in water level can be measured. For each flood and
-            % ebb phase in both the repeated and varying water level time 
-            % series, we can now calculate the mean current speed based on
-            % the empirical relationship established above. Then, for each
-            % flood and ebb phase we can calculate a scaling factor by
-            % dividing the mean current speed in the longer term (varying)
-            % data set by the mean current speed in the repeated data set.
-            % We then apply these scaling factors to the repeated speed 
-            % records.
+            %
             
-            generatePlot = 0;            
-            tidalOnly    = 0;
-            splitPhases  = 0;
+            generatePlot = 0;  
             
             if ~isempty(varargin)
                 for i = 1:2:size(varargin,2) % only bother with odd arguments, i.e. the labels
                     switch varargin{i}
                       case 'plot'
-                        generatePlot = varargin{i + 1};
-                      case 'tidalOnly'
-                        tidalOnly = varargin{i + 1};
-                      case 'splitPhases'
-                        splitPhases = varargin{i + 1};
+                          generatePlot = varargin{i+1};
                     end
                 end   
             end
-            
-            
-            % Need to add support for tidal only and split phases
-            
-            % Get speed-range relationship
-            if splitPhases
-                [fit1, rSq1, fit2, rSq2] = TS.fitMeanSpeed2TidalRange(varargin{:});
-            else
-                [fit, rSq] = TS.fitMeanSpeed2TidalRange(varargin{:});
-            end
+                        
+            [uFitFlood, vFitFlood, uFitEbb, vFitEbb] = RCM.Current.TimeSeries.fitTidalComponents2WaterLevelChange(TS, TS.waterLevels, varargin{:})
             
             if isempty(TS.TotalTidePort)
-                port = TS.getTotalTidePort();
+                TS.getTotalTidePort();
             end
             
             % Get heights from Total Tide for the period under consideration. 
@@ -524,16 +645,11 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             % time period. This ensures that we get slack water levels before 
             % and after the time period and therefore can calculate tidal 
             % phase ranges for every datapoint
-            ttHeights = TotalTide.getStationHeights(port, ...
+            ttHeights = TotalTide.getStationHeights(TS.TotalTidePort, ...
                 datestr(TS.startTime-1,'dd/mm/yyyy'), days + 2, TS.timeIntervalSeconds/60);
             
             % Convert Total Tide data to a WaterLevel object
             ttWaterLevel = RCM.WaterLevel.TimeSeries.fromTotalTideStruct(ttHeights);
-            
-            % Explicitly map the tidal phase ranges to each data point
-            % before truncating to the actual required time period. This 
-            % means every data point will be represented
-            ttWaterLevel.mapRanges;
             
             % The Total Tide record starts at midnight the day prior to our
             % required time interval, so lets truncate it to start at the same time 
@@ -549,12 +665,7 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             % required as it doesnt affect the range between slack levels
             % but it is good practice.
             ttWaterLevel.normalise;
-
-            % Create another long term water level record but this time based on 
-            % the water levels during only the period covered by the current data
-            % repeated through the required longer term time period
             
-            % Clone of the long term Total Tide water levels
             refWaterLevel = ttWaterLevel.clone;
                         
             % Repeat the water levels in the first spring-neap cycle
@@ -564,60 +675,89 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             ttRanges = ttWaterLevel.ranges; 
             refRanges = refWaterLevel.ranges;
             noRanges = min(length(ttRanges), length(refRanges));
+            rangeRatios = ttRanges./refRanges
             
-            % Now we have a long term water level record and a corresponding
-            % repeated water level record
-            if splitPhases
-                ttMeanFloodSpeeds  = polyval(fit1,abs(ttRanges(1:noRanges)));
-                refMeanFloodSpeeds = polyval(fit1,abs(refRanges(1:noRanges)));
-                
-                ttMeanEbbSpeeds  = polyval(fit2,abs(ttRanges(1:noRanges)));
-                refMeanEbbSpeeds = polyval(fit2,abs(refRanges(1:noRanges)));
-                
-                floodScales = ttMeanFloodSpeeds./refMeanFloodSpeeds;
-                ebbScales = ttMeanEbbSpeeds./refMeanEbbSpeeds;
-                
-                scales = floodScales;
-                
-                ebbIndexes = find(ttRanges < 0);
-                scales(ebbIndexes) = ebbScales(ebbIndexes);   
-            else
-                ttMeanSpeeds  = polyval(fit,abs(ttRanges(1:noRanges)));
-                refMeanSpeeds = polyval(fit,abs(refRanges(1:noRanges)));
-                
-                scales = ttMeanSpeeds./refMeanSpeeds;
+            rangeRatiosPerTimeStep = zeros(refWaterLevel.length,1);
+            
+            refSlackIndexes = find(refWaterLevel.isSlack);
+            
+            rangeRatiosPerTimeStep(1:refSlackIndexes(1)-1,1) = rangeRatios(1);
+            
+            for i = 1:length(refSlackIndexes)-1
+               rangeRatiosPerTimeStep(refSlackIndexes(i):refSlackIndexes(i+1)-1,1) = rangeRatios(i);
             end
             
             scaledTS = TS.clone;
             scaledTS.repeatSpringNeapCycle(days);
             
-            speedProperty = 'Speed';
-            
-            if tidalOnly
-                speedProperty = 'SpeedTidal';
-            end
+            UFlood = rangeRatiosPerTimeStep.*scaledTS.uTidal + (1-rangeRatiosPerTimeStep).*uFitFlood(2)
+            VFlood = rangeRatiosPerTimeStep.*scaledTS.vTidal + (1-rangeRatiosPerTimeStep).*vFitFlood(2)
+            UEbb   = rangeRatiosPerTimeStep.*scaledTS.uTidal + (1-rangeRatiosPerTimeStep).*uFitEbb(2)
+            VEbb   = rangeRatiosPerTimeStep.*scaledTS.vTidal + (1-rangeRatiosPerTimeStep).*vFitEbb(2)
 
-            refSlackIndexes = refWaterLevel.SlackIndexes;
+
             
-            scaledTS.(speedProperty)(1:refSlackIndexes(1)-1,1) = scaledTS.(speedProperty)(1:refSlackIndexes(1)-1,1) * scales(1);
+            scaledTS.uTidal = UFlood
+            scaledTS.vTidal = VFlood 
             
-            for i = 1:length(refSlackIndexes)-1
-               scaledTS.(speedProperty)(refSlackIndexes(i):refSlackIndexes(i+1)-1,1) = ...
-                   scaledTS.(speedProperty)(refSlackIndexes(i):refSlackIndexes(i+1)-1,1) * scales(i);
-            end
+            ebbIdxs = ttWaterLevel.gradent < 0
             
-            if tidalOnly
-                [scaledTS.uTidal, scaledTS.vTidal] = RCM.Utils.spd2uv(scaledTS.SpeedTidal, scaledTS.DirectionTidal);  
-                
-                u_comp = scaledTS.uTidal + scaledTS.uNonTidal;
-                v_comp = scaledTS.vTidal + scaledTS.vNonTidal;
-                [scaledTS.Speed, scaledTS.Direction] = RCM.Utils.uv2spd(u_comp,v_comp);                
-            end
+            scaledTS.uTidal(ebbIdxs) = UEbb(ebbIdxs)
+            scaledTS.vTidal(ebbIdxs) = VEbb(ebbIdxs) 
             
+            [scaledTS.SpeedTidal, scaledTS.DirectionTidal] = RCM.Utils.uv2spd(scaledTS.uTidal,scaledTS.vTidal);
+            
+            scaledTS.u = scaledTS.uTidal + scaledTS.uNonTidal;
+            scaledTS.v = scaledTS.vTidal + scaledTS.vNonTidal;
+            
+            [scaledTS.Speed, scaledTS.Direction] = RCM.Utils.uv2spd(scaledTS.u,scaledTS.v); 
+            
+%             
+%             scaledTS = TS.clone;
+%             scaledTS.repeatSpringNeapCycle(days);
+%             
+%            
+% 
+%             refSlackIndexes = refWaterLevel.slackIndexes;
+%             
+%             scaledTS.uTidal(1:refSlackIndexes(1)-1,1) = scaledTS.(speedProperty)(1:refSlackIndexes(1)-1,1) * scales(1);
+%             
+%             for i = 1:length(refSlackIndexes)-1
+%                scaledTS.(speedProperty)(refSlackIndexes(i):refSlackIndexes(i+1)-1,1) = ...
+%                    scaledTS.(speedProperty)(refSlackIndexes(i):refSlackIndexes(i+1)-1,1) * scales(i);
+%             end
+%             
+%             if tidalOnly
+%                 [scaledTS.uTidal, scaledTS.vTidal] = RCM.Utils.spd2uv(scaledTS.SpeedTidal, scaledTS.DirectionTidal);  
+%                 
+%                 u_comp = scaledTS.uTidal + scaledTS.uNonTidal;
+%                 v_comp = scaledTS.vTidal + scaledTS.vNonTidal;
+%                 [scaledTS.Speed, scaledTS.Direction] = RCM.Utils.uv2spd(u_comp,v_comp);                
+%             end
+%             
             meanPressure = mean(scaledTS.Pressure);
             scaledTS.Pressure = ttWaterLevel.Height + meanPressure;
             scaledTS.clearDerivedProperties;
+            
+            figure
+            subplot(211)
+            plot(scaledTS.uTidal); grid on
+            subplot(212)
+            plot(scaledTS.vTidal); grid on
+            
+            figure
+            subplot(211)
+            plot(scaledTS.u); grid on
+            subplot(212)
+            plot(scaledTS.v); grid on
+            
+            figure
+            subplot(211)
+            plot(scaledTS.Speed); grid on
+            subplot(212)
+            plot(scaledTS.Direction); grid on
         end
+
          
         function [str] = toStruct(TS)
             % Returns a struct representation of the object.

@@ -290,6 +290,10 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
             m = max(WL.Height);
         end
         
+        function g = gradient(WL)
+            g = gradient(WL.Height);
+        end
+        
         function r = ranges(WL)
             % Returns a vector representing the tidal ranges of each flood
             % and ebb tide.

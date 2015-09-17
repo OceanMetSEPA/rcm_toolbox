@@ -434,7 +434,8 @@ classdef Base < dynamicprops
             
             % We dont want to insist that the cycles argument is an int
             % data type necessarily, but it does need to be a whole number.
-            if ~(cycles == int8(cycles))
+            
+            if ~(cycles == int16(cycles))
                 error('RCM:TimeSeries:InvalidArgument', ...
                     'Number of cycles must be a whole number.');
             end
