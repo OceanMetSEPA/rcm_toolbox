@@ -10,19 +10,28 @@ function [uFitF, vFitF, uFitE, vFitE] = fitTidalComponents2WaterLevelChange(curr
     vFitE = [];
 
     generatePlot = 0;  
+    nonTidal     = 0;
 
     if ~isempty(varargin)
         for i = 1:2:size(varargin,2) % only bother with odd arguments, i.e. the labels
             switch varargin{i}
               case 'plot'
                 generatePlot = varargin{i + 1};
+              case 'nonTidal'
+                nonTidal = varargin{i + 1};
             end
         end   
     end
 
     levelChanges = waterLevelTS.gradient; % central difference
-    tidalU       = currentTS.uTidal;
-    tidalV       = currentTS.vTidal;
+    
+    tidalU = currentTS.uTidal;
+    tidalV = currentTS.vTidal;
+    
+    if nonTidal
+        tidalU = tidalU.*(-1) + currentTS.u;
+        tidalV = tidalV.*(-1) + currentTS.v;
+    end
     
     % Define linear fit
     floodIndexes = levelChanges > 0;

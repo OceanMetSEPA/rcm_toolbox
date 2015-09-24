@@ -619,6 +619,11 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
 %         end
       
         function scaledTS = extendAndScale(TS, days, varargin)
+        end
+        
+        
+        
+        function scaledTS = scale(TS, queryStartTime, days, varargin)
             % Here's the logic for scaling.
             %
             %
@@ -638,27 +643,24 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             
             if isempty(TS.TotalTidePort)
                 TS.getTotalTidePort();
-            end
+            end            
             
             % Get heights from Total Tide for the period under consideration. 
             % Get records for both a day before and a day after the required 
             % time period. This ensures that we get slack water levels before 
             % and after the time period and therefore can calculate tidal 
             % phase ranges for every datapoint
-            ttHeights = TotalTide.getStationHeights(TS.TotalTidePort, ...
-                datestr(TS.startTime-1,'dd/mm/yyyy'), days + 2, TS.timeIntervalSeconds/60);
-            
-            % Convert Total Tide data to a WaterLevel object
-            ttWaterLevel = RCM.WaterLevel.TimeSeries.fromTotalTideStruct(ttHeights);
+            ttWaterLevel = RCM.WaterLevel.TimeSeries.fromTotalTide( ...
+                queryStartTime-1, days + 2, ...
+                'resolution', TS.timeIntervalSeconds/60, 'port', TS.TotalTidePort);
             
             % The Total Tide record starts at midnight the day prior to our
             % required time interval, so lets truncate it to start at the same time 
             % as our time series (well, the closest record).
-            ttWaterLevel.truncateByTime('startTime', TS.startTime);
+            ttWaterLevel.truncateByTime('startTime', queryStartTime);
             
-            % The Total Tide record spans a day longer than we need. Now
-            % that we've set the tidal ranges, lets truncate to the total
-            % number of days required.
+            % The Total Tide record spans a day longer than we need. Truncate 
+            % to the total number of days required.
             ttWaterLevel.truncateToDays(days);
             
             % Normalise the data to a mean of zero. This is not really
@@ -666,37 +668,110 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             % but it is good practice.
             ttWaterLevel.normalise;
             
-            refWaterLevel = ttWaterLevel.clone;
+            refWaterLevel = RCM.WaterLevel.TimeSeries.fromTotalTide( ...
+                TS.startTime-1, TS.lengthDays + 2, ...
+                'resolution', TS.timeIntervalSeconds/60, 'port', TS.TotalTidePort);
+            
+            refWaterLevel.truncateByTime('startTime', TS.startTime);
+            refWaterLevel.shiftInTime(queryStartTime);
                         
             % Repeat the water levels in the first spring-neap cycle
             % through the required time period.
             refWaterLevel.repeatSpringNeapCycle(days);
+            refWaterLevel.normalise;
             
-            ttRanges = ttWaterLevel.ranges; 
-            refRanges = refWaterLevel.ranges;
-            noRanges = min(length(ttRanges), length(refRanges));
-            rangeRatios = ttRanges(1:noRanges)./refRanges(1:noRanges);
+            ttInflectionIdxs  = find(ttWaterLevel.isSpringNeapInflection);
+            refInflectionIdxs = find(refWaterLevel.isSpringNeapInflection);
             
-            rangeRatiosPerTimeStep = zeros(refWaterLevel.length,1);
+            ttInflectionIdxs = ttInflectionIdxs(1:2:length(ttInflectionIdxs));
+            refInflectionIdxs = refInflectionIdxs(1:2:length(refInflectionIdxs));
             
-            refSlackIndexes = find(refWaterLevel.isSlack);
+            numberOfSpringNeapCycles = min([length(ttInflectionIdxs) length(refInflectionIdxs)]);
             
-            rangeRatiosPerTimeStep(1:refSlackIndexes(1)-1,1) = rangeRatios(1);
+            ttSpringNeapMaxs = ones(numberOfSpringNeapCycles,1);
+            refSpringNeapMaxs = ones(numberOfSpringNeapCycles,1);
             
-            for i = 1:length(refSlackIndexes)-1
-               rangeRatiosPerTimeStep(refSlackIndexes(i):refSlackIndexes(i+1)-1,1) = rangeRatios(i);
+            ttSpringNeapMaxs(1)  = 1;
+            refSpringNeapMaxs(1) = 1;
+            
+            if ttInflectionIdxs(1) > ttWaterLevel.dataPointsPerSemiDiurnalHalfCycle
+                ttSpringNeapMaxs(1)  = std(abs(ttWaterLevel.TidalRange(1:ttInflectionIdxs(1)-1)));
             end
             
+            if refInflectionIdxs(1) > refWaterLevel.dataPointsPerSemiDiurnalHalfCycle
+                refSpringNeapMaxs(1) = std(abs(refWaterLevel.TidalRange(1:refInflectionIdxs(1)-1)));
+            end
+            
+            for snc = 1:numberOfSpringNeapCycles-1
+                ttSpringNeapMaxs(snc+1)  = std(abs(ttWaterLevel.TidalRange(ttInflectionIdxs(snc):ttInflectionIdxs(snc+1)-1)));
+                refSpringNeapMaxs(snc+1) = std(abs(refWaterLevel.TidalRange(refInflectionIdxs(snc):refInflectionIdxs(snc+1)-1)));
+            end
+            
+            ttSpringNeapMaxs(numberOfSpringNeapCycles)  = 1;
+            refSpringNeapMaxs(numberOfSpringNeapCycles) = 1;
+            
+            if (ttWaterLevel.length - ttInflectionIdxs(numberOfSpringNeapCycles)) > ttWaterLevel.dataPointsPerSemiDiurnalHalfCycle
+                ttSpringNeapMaxs(numberOfSpringNeapCycles)  = std(abs(ttWaterLevel.TidalRange(ttInflectionIdxs(end):end)));
+            end
+            
+            if (refWaterLevel.length - refInflectionIdxs(numberOfSpringNeapCycles)) > refWaterLevel.dataPointsPerSemiDiurnalHalfCycle
+                refSpringNeapMaxs(numberOfSpringNeapCycles) = std(abs(refWaterLevel.TidalRange(refInflectionIdxs(end):end)));
+            end
+            
+            rangeRatios = ttSpringNeapMaxs./refSpringNeapMaxs;
+            
+            rangeRatiosPerTimeStep = ones(refWaterLevel.length,1);
+            
+            rangeRatiosPerTimeStep(1:refInflectionIdxs(1)-1,1) = rangeRatios(1);
+
+            for i = 1:numberOfSpringNeapCycles-1
+               rangeRatiosPerTimeStep(refInflectionIdxs(i):refInflectionIdxs(i+1)-1,1) = rangeRatios(i+1);
+            end
+            
+            rangeRatiosPerTimeStep(refInflectionIdxs(end):end,1) = rangeRatios(end);
+  
             scaledTS = TS.clone;
+            scaledTS.shiftInTime(queryStartTime);
             scaledTS.repeatSpringNeapCycle(days);
             
-            UFlood = rangeRatiosPerTimeStep.*scaledTS.uTidal + (1-rangeRatiosPerTimeStep).*uFitFlood(2);
-            VFlood = rangeRatiosPerTimeStep.*scaledTS.vTidal + (1-rangeRatiosPerTimeStep).*vFitFlood(2);
-            UEbb   = rangeRatiosPerTimeStep.*scaledTS.uTidal + (1-rangeRatiosPerTimeStep).*uFitEbb(2);
-            VEbb   = rangeRatiosPerTimeStep.*scaledTS.vTidal + (1-rangeRatiosPerTimeStep).*vFitEbb(2);
+            if generatePlot
+                figure;
+                subplot(611);
+                plot(ttWaterLevel.Height, 'b');
+                grid on;
+                
+                subplot(612);
+                plot(refWaterLevel.Height, 'r');
+                grid on;
+                
+                subplot(613);
+                plot(rangeRatiosPerTimeStep, 'g', 'LineWidth', 3);
+                grid on;
+                
+                subplot(614);
+                plot(refWaterLevel.springNeapPhase, 'k', 'LineWidth', 3);
+                grid on;
+                
+                subplot(615);
+                plot(rangeRatiosPerTimeStep.^refWaterLevel.springNeapPhase, 'k', 'LineWidth', 3);
+                grid on;
+                
+                subplot(616);
+                plot(refWaterLevel.Height.*rangeRatiosPerTimeStep.^refWaterLevel.springNeapPhase, 'k--');
+                grid on;
+            end
+                    
+            scaledTS.waterLevels.normalise
+            
+            scalingFactor = rangeRatiosPerTimeStep.^refWaterLevel.springNeapPhase
+            
+            UFlood = scalingFactor.*scaledTS.uTidal + (1-scalingFactor).*uFitFlood(2);
+            VFlood = scalingFactor.*scaledTS.vTidal + (1-scalingFactor).*vFitFlood(2);
+            UEbb   = scalingFactor.*scaledTS.uTidal + (1-scalingFactor).*uFitEbb(2);
+            VEbb   = scalingFactor.*scaledTS.vTidal + (1-scalingFactor).*vFitEbb(2);
 
             scaledTS.uTidal = UFlood;
-            scaledTS.vTidal = VFlood ;
+            scaledTS.vTidal = VFlood;
             
             ebbIdxs = ttWaterLevel.gradient < 0;
             
@@ -704,6 +779,9 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             scaledTS.vTidal(ebbIdxs) = VEbb(ebbIdxs) ;
             
             [scaledTS.SpeedTidal, scaledTS.DirectionTidal] = RCM.Utils.uv2spd(scaledTS.uTidal,scaledTS.vTidal);
+            
+%             scaledTS.uNonTidal = scaledTS.uNonTidal(randperm(size(scaledTS.uNonTidal,1)), :);
+%             scaledTS.vNonTidal = scaledTS.vNonTidal(randperm(size(scaledTS.vNonTidal,1)), :);
             
             scaledTS.u = scaledTS.uTidal + scaledTS.uNonTidal;
             scaledTS.v = scaledTS.vTidal + scaledTS.vNonTidal;
@@ -713,24 +791,6 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             meanPressure = mean(scaledTS.Pressure);
             scaledTS.Pressure = ttWaterLevel.Height + meanPressure;
             scaledTS.clearDerivedProperties;
-            
-            figure
-            subplot(211)
-            plot(scaledTS.uTidal); grid on
-            subplot(212)
-            plot(scaledTS.vTidal); grid on
-            
-            figure
-            subplot(211)
-            plot(scaledTS.u); grid on
-            subplot(212)
-            plot(scaledTS.v); grid on
-            
-            figure
-            subplot(211)
-            plot(scaledTS.Speed); grid on
-            subplot(212)
-            plot(scaledTS.Direction); grid on
         end
 
          

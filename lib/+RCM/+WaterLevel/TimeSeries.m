@@ -384,6 +384,32 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
             sh = WL.Height(WL.slackIndexes);
         end
         
+        function fsmi = firstSpringMaxIndex(WL)
+            fsmi = find(WL.Height(1:WL.dataPointsPerSpringNeapCycle) == max(WL.Height(1:WL.dataPointsPerSpringNeapCycle)));
+            if length(fsmi) > 1
+                fsmi = fsmi(1);
+            end
+        end
+        
+        function issni = isSpringNeapInflection(WL)
+            issni = diff(WL.isSpringOrNeap) ~= 0;
+        end
+        
+        function snph = springNeapPhase(WL)
+            if WL.length < WL.dataPointsPerSpringNeapCycle
+                error('Time series shorter than mean spring-neap cycle');
+            end
+            
+            t = (1:WL.length)';
+            w = 2*pi/RCM.Constants.Tide.SpringNeapAverageSeconds;
+            
+            snph = cos(w * ((t - WL.firstSpringMaxIndex).*WL.timeIntervalSeconds));
+        end
+        
+        function iss = isSpringOrNeap(WL)
+            iss = sign(WL.springNeapPhase);
+        end
+        
         function bool = isSlackOnly(WL)
             % Returns a boolean describing whether the time series
             % represents slack water heights only (1) or not (0).

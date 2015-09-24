@@ -619,10 +619,46 @@ classdef Base < dynamicprops
             end
             
             if smoothingOffset ~= dataPointsPerTidalHalfCycle
-                warning('Timeries is shorter than average spring-near cycle plus a half semi-diurnal cycle. Discontinuities may occur.');
+                warning('Time series is shorter than average spring-near cycle plus a half semi-diurnal cycle. Discontinuities may occur.');
             end
            
             B.repeatForDays(requiredLengthDays, 'repeatLength', dataPointsPerSpringNeapCycle, 'offset', smoothingOffset);
+        end
+        
+        function shiftInTime(B, newStartTime)
+            % Adjusts the time vector to run from the new start time
+            % specified, preserving the same time interval between values.
+            %
+            % Any time dependent value vectors are also shifted with
+            % respect to the spring-neap cycle in order to preserve the
+            % position of values with respect to semi-diurnal and
+            % spring-neap sequences. In other words, values relating to
+            % floods or ebbs, slack water levels, spring or neap phases are
+            % retained within this context.
+            
+            existingLength     = B.length
+            existingLengthDays = B.lengthDays
+            existingStartTime  = B.startTime
+           
+            startTimeDifference = newStartTime - existingStartTime
+            differenceSNCycles  = startTimeDifference/RCM.Constants.Tide.SpringNeapAverageDays
+            wholeSNCycles       = floor(differenceSNCycles)
+            oddCycles           = mod(wholeSNCycles, 2) == 1
+            
+            if wholeSNCycles == 0
+                wholeCycle = 0
+            end
+            
+            % If the shift is an odd number of spring-neap cycles, add an
+            % additional half semi-dirunal cycle period.
+            SemiDiurnalHalfCycleDays = RCM.Constants.Tide.SemiDiurnalHalfCycleSeconds / (60 * 60 *24)
+            B.Time = B.Time + (RCM.Constants.Tide.SpringNeapAverageDays * wholeSNCycles) + oddCycles * SemiDiurnalHalfCycleDays;
+
+            B.repeatSpringNeapCycle(existingLengthDays * 2);
+            B.truncateByTime('startTime', newStartTime);
+            B.truncateByIndex('endIndex', existingLength);
+            
+            B.clearDerivedProperties
         end
         
         % If latitude not known try to set it now
