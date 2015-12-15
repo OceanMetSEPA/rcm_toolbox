@@ -463,6 +463,10 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             tpm = tidalPhaseStat(TS, property, 'std');
         end
         
+        function [fit1, rSq1, fit2, rSq2] = fitMeanSpeed2TidalRange(TS, varargin)
+            [fit1, rSq1, fit2, rSq2] = RCM.Current.TimeSeries.fitProperty2TidalRange(TS, TS.waterLevels, varargin{:})
+        end
+        
         function scaledTS = extendAndScale(TS, days, varargin)
             % Here's the logic for scaling.
             %
@@ -516,7 +520,7 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             end
             
             if isempty(TS.TotalTidePort)
-                port = TS.getTotalTidePort();
+                TS.getTotalTidePort();
             end
             
             % Get heights from Total Tide for the period under consideration. 
@@ -524,7 +528,7 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             % time period. This ensures that we get slack water levels before 
             % and after the time period and therefore can calculate tidal 
             % phase ranges for every datapoint
-            ttHeights = TotalTide.getStationHeights(port, ...
+            ttHeights = TotalTide.getStationHeights(TS.TotalTidePort, ...
                 datestr(TS.startTime-1,'dd/mm/yyyy'), days + 2, TS.timeIntervalSeconds/60);
             
             % Convert Total Tide data to a WaterLevel object
@@ -533,7 +537,7 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             % Explicitly map the tidal phase ranges to each data point
             % before truncating to the actual required time period. This 
             % means every data point will be represented
-            ttWaterLevel.mapRanges;
+%             ttWaterLevel.mapRanges;
             
             % The Total Tide record starts at midnight the day prior to our
             % required time interval, so lets truncate it to start at the same time 
