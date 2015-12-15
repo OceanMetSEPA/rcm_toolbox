@@ -685,7 +685,7 @@ classdef Base < dynamicprops
             % Sets the instance .Latitude and .Longitude properties based upon 
             % the set .Easting and .Northing properties
             
-            if ~(TS.Easting == 0) && ~(TS.Northing == 0)
+            if ~(TS.Easting == 0) & ~(TS.Northing == 0)
                 [TS.Longitude,TS.Latitude] = OS.catCoordinates(TS.Easting, TS.Northing,'from','EN','to','LL');
             end
         end
