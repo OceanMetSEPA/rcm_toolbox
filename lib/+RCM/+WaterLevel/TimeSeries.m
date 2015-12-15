@@ -290,6 +290,10 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
             m = max(WL.Height);
         end
         
+        function g = gradient(WL)
+            g = gradient(WL.Height);
+        end
+        
         function r = ranges(WL)
             % Returns a vector representing the tidal ranges of each flood
             % and ebb tide.
@@ -378,6 +382,32 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
             % slack water data point in the time series.
             
             sh = WL.Height(WL.slackIndexes);
+        end
+        
+        function fsmi = firstSpringMaxIndex(WL)
+            fsmi = find(WL.Height(1:WL.dataPointsPerSpringNeapCycle) == max(WL.Height(1:WL.dataPointsPerSpringNeapCycle)));
+            if length(fsmi) > 1
+                fsmi = fsmi(1);
+            end
+        end
+        
+        function issni = isSpringNeapInflection(WL)
+            issni = diff(WL.isSpringOrNeap) ~= 0;
+        end
+        
+        function snph = springNeapPhase(WL)
+            if WL.length < WL.dataPointsPerSpringNeapCycle
+                error('Time series shorter than mean spring-neap cycle');
+            end
+            
+            t = (1:WL.length)';
+            w = 2*pi/RCM.Constants.Tide.SpringNeapAverageSeconds;
+            
+            snph = cos(w * ((t - WL.firstSpringMaxIndex).*WL.timeIntervalSeconds));
+        end
+        
+        function iss = isSpringOrNeap(WL)
+            iss = sign(WL.springNeapPhase);
         end
         
         function bool = isSlackOnly(WL)

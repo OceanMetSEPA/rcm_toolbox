@@ -135,7 +135,8 @@ classdef (Abstract) Plotter < handle
             end
             
             % Here we want more detail than just the slack heights
-            totalTideHeights = TS.totalTideWaterLevels(0, 16, 'plot', 0);
+            totalTideHeights = TS.totalTideWaterLevels('offsetDays', 0, 'lengthDays', TS.lengthDays, 'plot', 0);
+            totalTideHeights.truncateByTime('startTime', TS.Time(1), 'endTime', TS.Time(end));
 
             h = figure;
             h(1)=subplot(2,1,1);
