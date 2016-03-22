@@ -165,6 +165,8 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
         vNonTidal@double       = [];
         SpeedTidal@double      = [];
         DirectionTidal@double  = [];
+        SpeedNonTidal@double   = [];
+        DirectionNonTidal@double  = [];
         Tideyness@double       = NaN;
     end
     
@@ -396,8 +398,9 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
                 dv = TS.v - vt;
                 
                 [TS.SpeedTidal,TS.DirectionTidal] = RCM.Utils.uv2spd(ut,vt);
+                [TS.SpeedNonTidal,TS.DirectionNonTidal] = RCM.Utils.uv2spd(du,dv)
             
-                TS.Tideyness = mean(TS.Speed - TS.SpeedTidal)/mean(TS.Speed);
+                TS.Tideyness = var(TS.SpeedTidal)/var(TS.Speed); % variance is proportional to KE
             else
                 ut = [];
                 vt = [];
@@ -410,6 +413,8 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             TS.vTidal=vt;
             TS.uNonTidal=du;
             TS.vNonTidal=dv;
+            
+            
         end
                 
         function [cumVec] = cumulativeVector(TS)
@@ -621,15 +626,20 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
   
             scaledTS = TS.clone;
             scaledTS.shiftInTime(queryStartTime);
-            scaledTS.repeatSpringNeapCycle(days);
-                    
+            scaledTS.repeatSpringNeapCycle(days+1);
+            scaledTS.truncateByIndex('endIndex', ttWaterLevel.length)
+                                
             scaledTS.waterLevels.normalise;
             
             if scaleUniformly
                 scalingFactor = rangeRatiosPerTimeStep;
             else
                 scalingFactor = rangeRatiosPerTimeStep.^refWaterLevel.springNeapPhase;
-            end        
+            end      
+%             
+%             % ensure equal lengths
+%             % not clear why they occassionally differ
+%             scalingFactor = scalingFactor(1:scaledTS.length)
             
             UFlood = scalingFactor.*scaledTS.uTidal + (1-scalingFactor).*uFitFlood(2);
             VFlood = scalingFactor.*scaledTS.vTidal + (1-scalingFactor).*vFitFlood(2);
@@ -640,6 +650,9 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             scaledTS.vTidal = VFlood;
             
             ebbIdxs = ttWaterLevel.gradient < 0;
+%             % ensure equal lengths
+%             % not clear why they occassionally differ
+%             ebbIdxs = ebbIdxs(1:scaledTS.length)
             
             scaledTS.uTidal(ebbIdxs) = UEbb(ebbIdxs);
             scaledTS.vTidal(ebbIdxs) = VEbb(ebbIdxs) ;

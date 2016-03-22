@@ -99,6 +99,16 @@ classdef Record < RCM.Current.TimeSeries & handle
             
             R.calculateComponents;
         end
+        
+        function R = createFromComponents(time, u, v)
+            R = RCM.HGAnalysis.Record;
+            
+            R.Time = time;
+            R.u    = u;
+            R.v    = v;
+            
+            R.calculateSpeed;
+        end
          
     end
     
