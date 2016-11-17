@@ -37,12 +37,12 @@ detrWL=detrend(WL.height(indexTSWL)');
 modDateTimePres=dateTime(indexTSP);
 modDateTimeWL=WL.time(indexTSWL)';
 %% get the peaks and troughs
-peakIndicesWL = findPeaksAndTroughIndexes(detrWL, 5);
-peakIndicesPres = findPeaksAndTroughIndexes(detrPres, 5);
+peakIndicesWL = RCM.Utils.findPeakAndTroughIndexes(detrWL, 5);
+peakIndicesPres = RCM.Utils.findPeakAndTroughIndexes(detrPres, 5);
 
 %% calculate the differences between the 2 time vectors:
 for ii=1:length(modDateTimeWL(peakIndicesWL))
-dt(ii)=abs(diff([modDateTimePres(peakIndicesPres(ii)) modDateTimeWL(peakIndicesWL(ii))]));
+    dt(ii)=abs(diff([modDateTimePres(peakIndicesPres(ii)) modDateTimeWL(peakIndicesWL(ii))]));
 end
 % take the mean of all time differences; if the difference is more than 50 min (0.034 days) 
 % the time is in BST:
@@ -79,7 +79,7 @@ plot(modDateTimePres(peakIndicesPres),detrPres(peakIndicesPres),'or')
 plot(modDateTimeWL(peakIndicesWL),detrWL(peakIndicesWL),'or')
 % plot the new time (GMT in the former plot):
 plot(timeGMT(indexTSP),detrPres,'c.-')
-timeaxis(1,[],[],20)
+datetick('x','dd/mm', 'keeplimits', 'keepticks');
 
 
 %% check the times (print first 6 times of both data sets in command window):

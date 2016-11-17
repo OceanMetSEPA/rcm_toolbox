@@ -29,6 +29,12 @@ classdef Base < dynamicprops
         Longitude@double = NaN;
     end
     
+    methods (Static = true)
+        function b = combine() 
+            
+        end
+    end
+    
     methods
         
         function l = length(B)
@@ -61,7 +67,16 @@ classdef Base < dynamicprops
             % consecutive observations and therefore implies that the time
             % interval is regular.
             
-            seconds = mean(diff(B.Time))*24*60*60;
+            seconds = B.timeIntervalDays*24*60*60;
+        end
+        
+        function [days] = timeIntervalDays(B)
+            % Returns the time interval between observations in days.
+            % This is calculated as the mean difference in time between 
+            % consecutive observations and therefore implies that the time
+            % interval is regular.
+            
+            days = mean(diff(B.Time));
         end
         
         function d = dataPointsPerSemiDiurnalHalfCycle(B)
@@ -369,7 +384,7 @@ classdef Base < dynamicprops
             % so refreshing these using the .clearDerivedProperties()
             % method might be appropriate after truncating.
             %
-            
+
             % Raise error if time series shorter than specified size
             % (or should this just do nothing? Raise warning?)
             if requiredLengthDays > B.lengthDays
@@ -383,7 +398,7 @@ classdef Base < dynamicprops
         
         function truncateToSpringNeapCycle(B)
             % Truncates the time series object to the number of days
-            % repersented by an average spring-neap cycle.
+            % represented by an average spring-neap cycle.
             %
             % If the time series object is shorter than the average spring-
             % neap cycle an error is raised.
@@ -463,7 +478,7 @@ classdef Base < dynamicprops
                 error('RCM:TimeSeries:InsufficientData', ...
                     'TimeSeries is shorter than required number of datapoints.');
             end
-            
+
             meta = metaclass(B);
             
             times = zeros(repeatLength*cycles,1);
@@ -517,7 +532,7 @@ classdef Base < dynamicprops
                                     sliceStartIndex = 1;
                                     sliceEndIndex   = repeatLength;
                                     
-                                    % Offset sampling indexes alternately
+%                                     % Offset sampling indexes alternately
                                     if mod(i,2) == 0
                                         sliceStartIndex = sliceStartIndex + offset;
                                         sliceEndIndex   = sliceEndIndex + offset;
@@ -565,7 +580,7 @@ classdef Base < dynamicprops
             end
             
             cycles = ceil(requiredLengthDays/repeatLengthDays);
-            
+
             B.repeat(cycles, varargin{:});
             B.truncateToDays(requiredLengthDays);            
         end
@@ -578,10 +593,10 @@ classdef Base < dynamicprops
             % Since the average period of a semi-diurnal tidal cycle is 12 h 25 m 
             % we get 28.51 cycles in a spring-neap cycle:
             %
-            %   (14.75*(24/(25/60 + 12)) = 28.51). 
+            %   (14.77*(24/(12 + 25/60)) = 28.5457248). 
             % 
             % So there are twenty-eight and a half semi-diurnal cycles in an 
-            % average spring-neap cycle. This means if we just repeat a 14.75 
+            % average spring-neap cycle. This means if we just repeat a 14.77 
             % day timeseries, there will be a half a phase discrepancy between 
             % each successive repeating sequence.
             %
@@ -610,19 +625,66 @@ classdef Base < dynamicprops
             end
             
             dataPointsPerTidalHalfCycle  = B.dataPointsPerSemiDiurnalHalfCycle;
-            dataPointsPerSpringNeapCycle = B.dataPointsPerSpringNeapCycle + 1;
+            dataPointsPerSpringNeapCycle = B.dataPointsPerSpringNeapCycle;
             
-            smoothingOffset = dataPointsPerTidalHalfCycle;
-            
-            while B.length < (dataPointsPerSpringNeapCycle + smoothingOffset)
-                smoothingOffset = smoothingOffset - 1;
+            smoothingOffset = round(floor((RCM.Constants.Tide.SemiDiurnalHalfCycleSeconds*1.0974496644295)/B.timeIntervalSeconds));
+
+            if B.length < (dataPointsPerSpringNeapCycle + smoothingOffset)
+                requiredExtensionPoints = (dataPointsPerSpringNeapCycle + smoothingOffset + 1) - B.length;
+                B.extendSemiDiurnalCycle(requiredExtensionPoints);               
             end
             
-            if smoothingOffset ~= dataPointsPerTidalHalfCycle
-                warning('Time series is shorter than average spring-near cycle plus a half semi-diurnal cycle. Discontinuities may occur.');
-            end
-           
             B.repeatForDays(requiredLengthDays, 'repeatLength', dataPointsPerSpringNeapCycle, 'offset', smoothingOffset);
+        end
+        
+        function extendSemiDiurnalCycle(B, numberOfPoints)
+            originalLengthPoints = B.length
+                        
+            B.Time((originalLengthPoints + 1):(originalLengthPoints + numberOfPoints)) = ...
+                (((1:numberOfPoints)* B.timeIntervalDays) + B.Time(originalLengthPoints));
+            
+            dataPointsPerTidalHalfCycle  = B.dataPointsPerSemiDiurnalHalfCycle;
+                
+            % Need to step back from end of data a whole number
+            % semi-diurnal cycles which accommodates the required
+            % additional number of points
+            samplePoints = (dataPointsPerTidalHalfCycle*2)*ceil(numberOfPoints/dataPointsPerTidalHalfCycle);
+                
+            meta = metaclass(B);
+
+            if originalLengthPoints > 1
+                for p = 1:length(meta.PropertyList)  
+
+                    if isequal(meta.PropertyList(p).Name, 'Time')
+                        continue;
+                    end
+                    
+                    % Only extend properties that share the same length as the time 
+                    % vector, i.e. properties that are represented on each time step
+                    %
+                    if length(B.(meta.PropertyList(p).Name)) == originalLengthPoints 
+                        
+                        % For any properties that are also subclasses of
+                        % RCM.TimeSeries.Base, invoke the extend... function
+                        % recursively
+                        %
+                        % For any other property, just repeat as vector
+                        %
+                        if isobject(B.(meta.PropertyList(p).Name)) && ... 
+                                any(cellfun(@(x) isequal('RCM.TimeSeries.Base', x), superclasses(B)))
+                            B.(meta.PropertyList(p).Name).extendSemiDiurnalCycle(numberOfPoints);
+                        else
+                            
+                            values = B.(meta.PropertyList(p).Name);
+                            sample = values((originalLengthPoints - samplePoints):(originalLengthPoints - samplePoints + numberOfPoints - 1));
+                           
+                            values((originalLengthPoints+1):(originalLengthPoints+numberOfPoints)) = sample;
+                            
+                            B.(meta.PropertyList(p).Name) = values;
+                        end
+                    end
+                end
+            end
         end
         
         function shiftInTime(B, newStartTime)
@@ -636,13 +698,13 @@ classdef Base < dynamicprops
             % floods or ebbs, slack water levels, spring or neap phases are
             % retained within this context.
             
-            existingLength     = B.length
-            existingLengthDays = B.lengthDays
-            existingStartTime  = B.startTime
+            existingLength     = B.length;
+            existingLengthDays = B.lengthDays;
+            existingStartTime  = B.startTime;
            
-            startTimeDifference = newStartTime - existingStartTime
-            differenceSNCycles  = startTimeDifference/RCM.Constants.Tide.SpringNeapAverageDays
-            wholeSNCycles       = floor(differenceSNCycles)
+            startTimeDifference = newStartTime - existingStartTime;
+            differenceSNCycles  = startTimeDifference/RCM.Constants.Tide.SpringNeapAverageDays;
+            wholeSNCycles       = floor(differenceSNCycles);
             oddCycles           = mod(wholeSNCycles, 2) == 1
             
             if wholeSNCycles == 0
@@ -650,15 +712,46 @@ classdef Base < dynamicprops
             end
             
             % If the shift is an odd number of spring-neap cycles, add an
-            % additional half semi-dirunal cycle period.
-            SemiDiurnalHalfCycleDays = RCM.Constants.Tide.SemiDiurnalHalfCycleSeconds / (60 * 60 *24)
-            B.Time = B.Time + (RCM.Constants.Tide.SpringNeapAverageDays * wholeSNCycles) + oddCycles * SemiDiurnalHalfCycleDays;
+            % additional half semi-diurnal cycle period.
+            SemiDiurnalHalfCycleDays = RCM.Constants.Tide.SemiDiurnalHalfCycleSeconds / (60 * 60 *24);
+            B.Time = B.Time + (RCM.Constants.Tide.SpringNeapAverageDays * wholeSNCycles) ...
+                + sign(wholeSNCycles) * oddCycles * SemiDiurnalHalfCycleDays * 1.0974496644295;
 
             B.repeatSpringNeapCycle(existingLengthDays * 2);
             B.truncateByTime('startTime', newStartTime);
             B.truncateByIndex('endIndex', existingLength);
             
             B.clearDerivedProperties
+        end
+        
+        function concatenate(B, otherTS)
+            meta = metaclass(B);
+            
+            otherLength = otherTS.length;
+
+            for p = 1:length(meta.PropertyList) 
+
+                % Only concatenate properties that share the same
+                % length as the time vector, i.e. properties that
+                % are represented on each time step
+                if length(otherTS.(meta.PropertyList(p).Name)) == otherLength
+
+                    % For any properties that are also subclasses of
+                    % RCM.TimeSeries.Base, invoke the concatenate function
+                    % recursively
+                    %
+                    % For any other property, just add as vector
+                    %
+                    if isobject(otherTS.(meta.PropertyList(p).Name)) && ... 
+                            any(cellfun(@(x) isequal('RCM.TimeSeries.Base', x), superclasses(otherTS)))
+
+                        B.(meta.PropertyList(p).Name).concatenate(otherTS.(meta.PropertyList(p).Name));
+                    else
+                        B.(meta.PropertyList(p).Name) = vertcat(B.(meta.PropertyList(p).Name), ...
+                            otherTS.(meta.PropertyList(p).Name));
+                    end
+                end
+            end
         end
         
         % If latitude not known try to set it now

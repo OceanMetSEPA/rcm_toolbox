@@ -455,7 +455,7 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
             % Generates a plot of the current time series water level
             % heights versus time.
             
-            figure;
+            %figure;
             h = plot(WL.Time, WL.Height);
             grid on;
             

@@ -385,7 +385,7 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             end
             
             try
-                cmd = sprintf('tideCoefficients=ut_solv(TS.Time, TS.u, TS.v,%f, ''auto'', ''ols'', ''white'', ''LinCI'')', TS.Latitude);
+                cmd = sprintf('tideCoefficients=ut_solv(TS.Time, TS.u, TS.v,%f, ''auto'', ''ols'', ''white'', ''LinCI'', ''NoTrend'')', TS.Latitude);
                 evalc(cmd); % Calling function this way suppresses text output
             catch
                 fprintf('OH DEAR, tide stuff failed\n')
