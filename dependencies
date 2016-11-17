@@ -2,7 +2,7 @@
 # see https://github.com/OceanMetSEPA/package_manager
 
 # UTide tidal harmonic analysis package
-name = uTide
+name = utide
 source = fileExchange
 id = 46523
 version = 1
