@@ -6,3 +6,4 @@ name = utide
 source = fileExchange
 id = 46523
 version = 1
+installation.tag = 1.0
