@@ -492,6 +492,9 @@ Get the index of the record which is closest to the passed in time
 
     ts.closestRecordToTimeIndex(735677)
 
+    % ans =
+    %    455
+
 #### Create a clone of the time series
 
     ts2 = ts.clone
