@@ -12,7 +12,7 @@ classdef GeneralTest < matlab.unittest.TestCase
             testDir = what('RCM\+Test');
             
             % load the fixture data into the 'fixture' variable
-            load([testDir.path,'\Fixtures\vestnessCurrents14m.mat']);
+            load([testDir.path,'\Fixtures\currents1.mat']);
             
             % Instantiate a TimeSeries object using fixture data (time,
             % pressure)

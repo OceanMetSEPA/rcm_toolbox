@@ -13,7 +13,7 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
             testDir = what('RCM\+Test');
             
             % load the fixture data into the 'fixture' variable
-            load([testDir.path,'\Fixtures\vestnessCurrents14m.mat']);
+            load([testDir.path,'\Fixtures\currents1.mat']);
             
             % Instantiate a TimeSeries object using fixture data (time,
             % height)
@@ -72,14 +72,14 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
         end
         
         function testDataPointsPerSpringNeapCycle(testCase)
-          actSolution = 1062;
+          actSolution = 1063;
           expSolution = testCase.TimeSeries.dataPointsPerSpringNeapCycle;
           
           verifyEqual(testCase, actSolution, expSolution);
         end
         
         function testSpringNeapCycleCount(testCase)
-          actSolution = 3.17043628373925;
+          actSolution = 3.166143208202706;
           expSolution = testCase.TimeSeries.springNeapCycleCount;
           
           verifyEqual(testCase, actSolution, expSolution, 'AbsTol', 0.0000001);
@@ -87,7 +87,7 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
         
         function testFirstSpringNeapIndexes(testCase)
           % Get indexes of all data points within first spring-neap cycle
-          actSolution = 1:1063;
+          actSolution = 1:1064;
           expSolution = testCase.TimeSeries.springNeapCycleIndexes;
           
           verifyEqual(testCase, actSolution, expSolution);
@@ -95,7 +95,7 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
         
         function testSecondSpringNeapIndexes(testCase)
           % Get indexes of all data points within second spring-neap cycle
-          actSolution = 1063:2125;
+          actSolution = 1064:2127;
           expSolution = testCase.TimeSeries.springNeapCycleIndexes('cycle', 2);
           
           verifyEqual(testCase, actSolution, expSolution);
@@ -103,7 +103,7 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
         
         function testThirdSpringNeapIndexes(testCase)
           % Get indexes of all data points within third spring-neap cycle
-          actSolution = 2125:3187;
+          actSolution = 2127:3190;
           expSolution = testCase.TimeSeries.springNeapCycleIndexes('cycle', 3);
           
           verifyEqual(testCase, actSolution, expSolution);
@@ -112,7 +112,7 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
         function testFirstSpringNeapIndexesWithOffset(testCase)
           % Get indexes of all data points within first spring-neap cycle
           % with offset from the start
-          actSolution = 101:1163;
+          actSolution = 101:1164;
           expSolution = testCase.TimeSeries.springNeapCycleIndexes('offset', 100);
           
           verifyEqual(testCase, actSolution, expSolution);
@@ -121,7 +121,7 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
         function testSecondSpringNeapIndexesWithOffset(testCase)
           % Get indexes of all data points within second spring-neap cycle
           % with offset from the start
-          actSolution = 1163:2225;
+          actSolution = 1164:2227;
           expSolution = testCase.TimeSeries.springNeapCycleIndexes('cycle', 2, 'offset', 100);
           
           verifyEqual(testCase, actSolution, expSolution);
@@ -130,7 +130,7 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
         function testThirdSpringNeapIndexesWithOffset(testCase)
           % Get indexes of all data points within third spring-neap cycle
           % with offset from the start
-          actSolution = 2225:3287;
+          actSolution = 2227:3290;
           expSolution = testCase.TimeSeries.springNeapCycleIndexes('cycle', 3, 'offset', 100);
           
           verifyEqual(testCase, actSolution, expSolution);
@@ -508,8 +508,8 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
             oldLength    = 3368;
             
             newStartTime = 735670.698784722;
-            newEndTime   = 735685.448831019;
-            newLength    = 1063;
+            newEndTime   = 735685.4627199074;
+            newLength    = 1064;
             
             verifyEqual(testCase, testCase.TimeSeries.Time(1),   oldStartTime, 'AbsTol', 0.000001);
             verifyEqual(testCase, testCase.TimeSeries.Time(end), oldEndTime,   'AbsTol', 0.000001);
@@ -861,9 +861,9 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
            timeDiffs = unique(abs(diff(rep.Time)));
            verifyLessThan(testCase, max(timeDiffs)-min(timeDiffs), 10/(24*60*60));
            
-           springNeapLength = testCase.TimeSeries.dataPointsPerSpringNeapCycle+1;
-           offset           = testCase.TimeSeries.dataPointsPerSemiDiurnalHalfCycle;
-           
+           springNeapLength = testCase.TimeSeries.dataPointsPerSpringNeapCycle;
+           offset           = round(floor((RCM.Constants.Tide.SemiDiurnalHalfCycleSeconds*RCM.Constants.Tide.SemiDiurnalHalfCycleSpringNeapExcessFactor)/testCase.TimeSeries.timeIntervalSeconds));
+
            % Check that other cycles have same values as first (i.e. is
            % repeated)
            verifyEqual(testCase, rep.Height(1),                     testCase.TimeSeries.Height(1));         % normal cycle

@@ -94,7 +94,7 @@ classdef (Abstract) TotalTide < handle
                 throw(err)
             end
 
-            TS.TotalTidePort = TotalTide.closestStation(TS.Easting, TS.Northing, 'EN');
+            TS.TotalTidePort = TotalTide.closestPort(TS.Easting, TS.Northing, 'format', 'OSGB');
             
             port = TS.TotalTidePort;
         end

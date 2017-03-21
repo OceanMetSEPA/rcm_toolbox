@@ -13,7 +13,7 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
             testDir = what('RCM\+Test');
             
             % load the fixture data into the 'fixture' variable
-            load([testDir.path,'\Fixtures\vestnessCurrents14m.mat']);
+            load([testDir.path,'\Fixtures\currents1.mat']);
             
             % Instantiate a TimeSeries object using fixture data (time,
             % speed, direction, pressure)
@@ -79,14 +79,14 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
         end
         
         function testDataPointsPerSpringNeapCycle(testCase)
-          actSolution = 1062;
+          actSolution = 1063;
           expSolution = testCase.TimeSeries.dataPointsPerSpringNeapCycle;
           
           verifyEqual(testCase, actSolution, expSolution);
         end
         
         function testSpringNeapCycleCount(testCase)
-          actSolution = 3.17043628373925;
+          actSolution = 3.166143208202706;
           expSolution = testCase.TimeSeries.springNeapCycleCount;
           
           verifyEqual(testCase, actSolution, expSolution, 'AbsTol', 0.0000001);
@@ -94,7 +94,7 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
         
         function testFirstSpringNeapIndexes(testCase)
           % Get indexes of all data points within first spring-neap cycle
-          actSolution = 1:1063;
+          actSolution = 1:1064;
           expSolution = testCase.TimeSeries.springNeapCycleIndexes;
           
           verifyEqual(testCase, actSolution, expSolution);
@@ -102,7 +102,7 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
         
         function testSecondSpringNeapIndexes(testCase)
           % Get indexes of all data points within second spring-neap cycle
-          actSolution = 1063:2125;
+          actSolution = 1064:2127;
           expSolution = testCase.TimeSeries.springNeapCycleIndexes('cycle', 2);
           
           verifyEqual(testCase, actSolution, expSolution);
@@ -110,7 +110,7 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
         
         function testThirdSpringNeapIndexes(testCase)
           % Get indexes of all data points within third spring-neap cycle
-          actSolution = 2125:3187;
+          actSolution = 2127:3190;
           expSolution = testCase.TimeSeries.springNeapCycleIndexes('cycle', 3);
           
           verifyEqual(testCase, actSolution, expSolution);
@@ -119,7 +119,7 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
         function testFirstSpringNeapIndexesWithOffset(testCase)
           % Get indexes of all data points within first spring-neap cycle
           % with offset from the start
-          actSolution = 101:1163;
+          actSolution = 101:1164;
           expSolution = testCase.TimeSeries.springNeapCycleIndexes('offset', 100);
           
           verifyEqual(testCase, actSolution, expSolution);
@@ -128,7 +128,7 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
         function testSecondSpringNeapIndexesWithOffset(testCase)
           % Get indexes of all data points within second spring-neap cycle
           % with offset from the start
-          actSolution = 1163:2225;
+          actSolution = 1164:2227;
           expSolution = testCase.TimeSeries.springNeapCycleIndexes('cycle', 2, 'offset', 100);
           
           verifyEqual(testCase, actSolution, expSolution);
@@ -137,7 +137,7 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
         function testThirdSpringNeapIndexesWithOffset(testCase)
           % Get indexes of all data points within third spring-neap cycle
           % with offset from the start
-          actSolution = 2225:3287;
+          actSolution = 2227:3290;
           expSolution = testCase.TimeSeries.springNeapCycleIndexes('cycle', 3, 'offset', 100);
           
           verifyEqual(testCase, actSolution, expSolution);
@@ -304,6 +304,8 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
             verifyEqual(testCase, length(testCase.TimeSeries.Pressure), oldLength);
             verifyEqual(testCase, testCase.TimeSeries.Easting, easting);
             verifyEqual(testCase, testCase.TimeSeries.Northing, northing);
+            verifyEqual(testCase, testCase.TimeSeries.MeanSpeed, 0.148551543942993, 'AbsTol', 0.000001);
+            verifyEqual(testCase, testCase.TimeSeries.ResidualSpeed, 0.071084192631058, 'AbsTol', 0.000001);
             
             testCase.TimeSeries.truncateByIndex;
             
@@ -314,7 +316,9 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
             verifyEqual(testCase, length(testCase.TimeSeries.Direction), oldLength);
             verifyEqual(testCase, length(testCase.TimeSeries.Pressure), oldLength);
             verifyEqual(testCase, testCase.TimeSeries.Easting, easting);
-            verifyEqual(testCase, testCase.TimeSeries.Northing, northing);            
+            verifyEqual(testCase, testCase.TimeSeries.Northing, northing);  
+            verifyEqual(testCase, testCase.TimeSeries.MeanSpeed, 0.148551543942993, 'AbsTol', 0.000001);
+            verifyEqual(testCase, testCase.TimeSeries.ResidualSpeed, 0.071084192631058, 'AbsTol', 0.000001);          
         end
 %         
         function testTruncateByIndexStartIndex(testCase)
@@ -341,7 +345,10 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
             verifyEqual(testCase, length(testCase.TimeSeries.Pressure), oldLength);
             verifyEqual(testCase, testCase.TimeSeries.Easting, easting);
             verifyEqual(testCase, testCase.TimeSeries.Northing, northing);
-            
+            % test derived properties
+            verifyEqual(testCase, testCase.TimeSeries.MeanSpeed, 0.148551543942993, 'AbsTol', 0.000001);
+            verifyEqual(testCase, testCase.TimeSeries.ResidualSpeed, 0.071084192631058, 'AbsTol', 0.000001);
+                        
             testCase.TimeSeries.truncateByIndex('startIndex', startIndex);
             
             verifyEqual(testCase, testCase.TimeSeries.Time(1), newStartTime, 'AbsTol', 0.000001);
@@ -351,7 +358,11 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
             verifyEqual(testCase, length(testCase.TimeSeries.Direction), newLength);
             verifyEqual(testCase, length(testCase.TimeSeries.Pressure), newLength);
             verifyEqual(testCase, testCase.TimeSeries.Easting, easting);
-            verifyEqual(testCase, testCase.TimeSeries.Northing, northing);   
+            verifyEqual(testCase, testCase.TimeSeries.Northing, northing); 
+            % test derived properties reset and recalculated
+            verifyEqual(testCase, testCase.TimeSeries.MeanSpeed, 0.148022481700941, 'AbsTol', 0.000001);
+            verifyEqual(testCase, testCase.TimeSeries.ResidualSpeed, 0.074288427114270, 'AbsTol', 0.000001);
+              
         end
         
         function testTruncateByIndexEndIndex(testCase)
@@ -378,7 +389,10 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
             verifyEqual(testCase, length(testCase.TimeSeries.Pressure), oldLength);
             verifyEqual(testCase, testCase.TimeSeries.Easting, easting);
             verifyEqual(testCase, testCase.TimeSeries.Northing, northing);
-            
+            % test derived properties
+            verifyEqual(testCase, testCase.TimeSeries.MeanSpeed, 0.148551543942993, 'AbsTol', 0.000001);
+            verifyEqual(testCase, testCase.TimeSeries.ResidualSpeed, 0.071084192631058, 'AbsTol', 0.000001);
+                        
             testCase.TimeSeries.truncateByIndex('endIndex', endIndex);
             
             verifyEqual(testCase, testCase.TimeSeries.Time(1), newStartTime, 'AbsTol', 0.000001);
@@ -388,7 +402,11 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
             verifyEqual(testCase, length(testCase.TimeSeries.Direction), newLength);
             verifyEqual(testCase, length(testCase.TimeSeries.Pressure), newLength);
             verifyEqual(testCase, testCase.TimeSeries.Easting, easting);
-            verifyEqual(testCase, testCase.TimeSeries.Northing, northing);   
+            verifyEqual(testCase, testCase.TimeSeries.Northing, northing);  
+            % test derived properties reset and recalculated
+            verifyEqual(testCase, testCase.TimeSeries.MeanSpeed, 0.149321200000000, 'AbsTol', 0.000001);
+            verifyEqual(testCase, testCase.TimeSeries.ResidualSpeed, 0.069296396683474, 'AbsTol', 0.000001);
+             
         end
         
         function testTruncateByIndexStartAndEndIndex(testCase)
@@ -416,6 +434,10 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
             verifyEqual(testCase, length(testCase.TimeSeries.Pressure), oldLength);
             verifyEqual(testCase, testCase.TimeSeries.Easting, easting);
             verifyEqual(testCase, testCase.TimeSeries.Northing, northing);
+            % test derived properties
+            verifyEqual(testCase, testCase.TimeSeries.MeanSpeed, 0.148551543942993, 'AbsTol', 0.000001);
+            verifyEqual(testCase, testCase.TimeSeries.ResidualSpeed, 0.071084192631058, 'AbsTol', 0.000001);
+                        
             
             testCase.TimeSeries.truncateByIndex('startIndex', startIndex, 'endIndex', endIndex);
             
@@ -426,7 +448,11 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
             verifyEqual(testCase, length(testCase.TimeSeries.Direction), newLength);
             verifyEqual(testCase, length(testCase.TimeSeries.Pressure), newLength);
             verifyEqual(testCase, testCase.TimeSeries.Easting, easting);
-            verifyEqual(testCase, testCase.TimeSeries.Northing, northing);   
+            verifyEqual(testCase, testCase.TimeSeries.Northing, northing);    
+            % test derived properties reset and recalculated
+            verifyEqual(testCase, testCase.TimeSeries.MeanSpeed, 0.148867852858856, 'AbsTol', 0.000001);
+            verifyEqual(testCase, testCase.TimeSeries.ResidualSpeed, 0.072403234567964, 'AbsTol', 0.000001);
+              
         end
         
         function testTruncateByTimeNoOptions(testCase)
@@ -447,6 +473,10 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
             verifyEqual(testCase, length(testCase.TimeSeries.Pressure), oldLength);
             verifyEqual(testCase, testCase.TimeSeries.Easting, easting);
             verifyEqual(testCase, testCase.TimeSeries.Northing, northing);
+            % test derived properties
+            verifyEqual(testCase, testCase.TimeSeries.MeanSpeed, 0.148551543942993, 'AbsTol', 0.000001);
+            verifyEqual(testCase, testCase.TimeSeries.ResidualSpeed, 0.071084192631058, 'AbsTol', 0.000001);
+                        
             
             testCase.TimeSeries.truncateByTime;
             
@@ -457,7 +487,11 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
             verifyEqual(testCase, length(testCase.TimeSeries.Direction), oldLength);
             verifyEqual(testCase, length(testCase.TimeSeries.Pressure), oldLength);
             verifyEqual(testCase, testCase.TimeSeries.Easting, easting);
-            verifyEqual(testCase, testCase.TimeSeries.Northing, northing);            
+            verifyEqual(testCase, testCase.TimeSeries.Northing, northing);     
+            % test derived properties reset and recalculated
+            verifyEqual(testCase, testCase.TimeSeries.MeanSpeed, 0.148551543942993, 'AbsTol', 0.000001);
+            verifyEqual(testCase, testCase.TimeSeries.ResidualSpeed, 0.071084192631058, 'AbsTol', 0.000001);
+                        
         end
 %         
         function testTruncateByTimeStartIndex(testCase)
@@ -484,6 +518,10 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
             verifyEqual(testCase, length(testCase.TimeSeries.Pressure), oldLength);
             verifyEqual(testCase, testCase.TimeSeries.Easting, easting);
             verifyEqual(testCase, testCase.TimeSeries.Northing, northing);
+            % test derived properties
+            verifyEqual(testCase, testCase.TimeSeries.MeanSpeed, 0.148551543942993, 'AbsTol', 0.000001);
+            verifyEqual(testCase, testCase.TimeSeries.ResidualSpeed, 0.071084192631058, 'AbsTol', 0.000001);
+                        
             
             testCase.TimeSeries.truncateByTime('startTime', startTime);
             
@@ -494,7 +532,11 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
             verifyEqual(testCase, length(testCase.TimeSeries.Direction), newLength);
             verifyEqual(testCase, length(testCase.TimeSeries.Pressure), newLength);
             verifyEqual(testCase, testCase.TimeSeries.Easting, easting);
-            verifyEqual(testCase, testCase.TimeSeries.Northing, northing);   
+            verifyEqual(testCase, testCase.TimeSeries.Northing, northing);     
+            % test derived properties reset and recalculated
+            verifyEqual(testCase, testCase.TimeSeries.MeanSpeed, 0.148022481700941, 'AbsTol', 0.000001);
+            verifyEqual(testCase, testCase.TimeSeries.ResidualSpeed, 0.074288427114270, 'AbsTol', 0.000001);
+                          
         end
         
         function testTruncateByTimeEndIndex(testCase)
@@ -629,8 +671,8 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
             oldLength    = 3368;
             
             newStartTime = 735670.698784722;
-            newEndTime   = 735685.448831019;
-            newLength    = 1063;
+            newEndTime   = 735685.4627199074;
+            newLength    = 1064;
             
             verifyEqual(testCase, testCase.TimeSeries.Time(1), oldStartTime, 'AbsTol', 0.000001);
             verifyEqual(testCase, testCase.TimeSeries.Time(end), oldEndTime, 'AbsTol', 0.000001);
@@ -640,6 +682,10 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
             verifyEqual(testCase, length(testCase.TimeSeries.Pressure), oldLength);
             verifyEqual(testCase, testCase.TimeSeries.Easting, easting);
             verifyEqual(testCase, testCase.TimeSeries.Northing, northing);
+            % test derived properties
+            verifyEqual(testCase, testCase.TimeSeries.MeanSpeed, 0.148551543942993, 'AbsTol', 0.000001);
+            verifyEqual(testCase, testCase.TimeSeries.ResidualSpeed, 0.071084192631058, 'AbsTol', 0.000001);
+                        
             
             testCase.TimeSeries.truncateToSpringNeapCycle;
             
@@ -650,7 +696,11 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
             verifyEqual(testCase, length(testCase.TimeSeries.Direction), newLength);
             verifyEqual(testCase, length(testCase.TimeSeries.Pressure), newLength);
             verifyEqual(testCase, testCase.TimeSeries.Easting, easting);
-            verifyEqual(testCase, testCase.TimeSeries.Northing, northing);   
+            verifyEqual(testCase, testCase.TimeSeries.Northing, northing);
+            % test derived properties reset and recalculated
+            verifyEqual(testCase, testCase.TimeSeries.MeanSpeed, 0.148896052631579, 'AbsTol', 0.000001);
+            verifyEqual(testCase, testCase.TimeSeries.ResidualSpeed, 0.065606435216279, 'AbsTol', 0.000001);
+                           
         end
         
         function testRepeatTwoCycles(testCase)
@@ -680,6 +730,10 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
            verifyEqual(testCase, rep.Speed(100), testCase.TimeSeries.Speed(100));
            verifyEqual(testCase, rep.Speed(1+testCase.TimeSeries.length), testCase.TimeSeries.Speed(1));
            verifyEqual(testCase, rep.Speed(100+testCase.TimeSeries.length), testCase.TimeSeries.Speed(100));
+           % test derived properties - mean speed is same
+           verifyEqual(testCase, testCase.TimeSeries.MeanSpeed, 0.148551543942993, 'AbsTol', 0.000001);
+           verifyEqual(testCase, testCase.TimeSeries.ResidualSpeed, 0.071084192631058, 'AbsTol', 0.000001);
+                        
         end
         
         function testRepeatFourCycles(testCase)
@@ -986,9 +1040,9 @@ classdef TimeSeriesTest < matlab.unittest.TestCase
            timeDiffs = unique(abs(diff(rep.Time)));
            verifyLessThan(testCase, max(timeDiffs)-min(timeDiffs), 10/(24*60*60));
            
-           springNeapLength = testCase.TimeSeries.dataPointsPerSpringNeapCycle+1;
-           offset           = testCase.TimeSeries.dataPointsPerSemiDiurnalHalfCycle;
-           
+           springNeapLength = testCase.TimeSeries.dataPointsPerSpringNeapCycle;
+           offset           = round(floor((RCM.Constants.Tide.SemiDiurnalHalfCycleSeconds*RCM.Constants.Tide.SemiDiurnalHalfCycleSpringNeapExcessFactor)/testCase.TimeSeries.timeIntervalSeconds));
+
            % Check that other cycles have same values as first (i.e. is
            % repeated)
            verifyEqual(testCase, rep.Speed(1),                     testCase.TimeSeries.Speed(1));         % normal cycle

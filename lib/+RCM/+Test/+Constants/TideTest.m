@@ -17,14 +17,14 @@ classdef TideTest < matlab.unittest.TestCase
         % CONSTANTS
 
         function testSpringNeapDays(testCase)
-          actSolution = 14.75;
+          actSolution = 14.77;
           expSolution = RCM.Constants.Tide.SpringNeapAverageDays;
           
           verifyEqual(testCase, actSolution, expSolution);
         end
 
         function testSpringNeapSeconds(testCase)
-          actSolution = 1274400;
+          actSolution = 1276128.0;
           expSolution = RCM.Constants.Tide.SpringNeapAverageSeconds;
           
           verifyEqual(testCase, actSolution, expSolution);

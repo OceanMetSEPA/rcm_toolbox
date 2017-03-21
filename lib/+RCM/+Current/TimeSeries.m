@@ -172,7 +172,7 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
     
     methods(Static = true)
         
-        function TS = create(time, speed, direction)
+        function TS = create(time, speed, direction, varargin)
             TS = RCM.Current.TimeSeries;
             
             TS.Time      = time;
@@ -180,9 +180,17 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             TS.Direction = direction;
             
             TS.calculateComponents;
+            
+            for a = 1:2:length(varargin)
+              try
+                  TS.(varargin{a}) = varargin{a + 1};
+              catch
+                  warning([varargin{a}, ' is not a valid property'])
+              end
+            end
         end
         
-        function TS = createFromComponents(time, u, v)
+        function TS = createFromComponents(time, u, v, varargin)
             TS = RCM.Current.TimeSeries;
             
             TS.Time = time;
@@ -190,15 +198,31 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             TS.v    = v;
             
             TS.calculateSpeed;
+            
+            for a = 1:2:length(varargin)
+              try
+                  TS.(varargin{a}) = varargin{a + 1};
+              catch
+                  warning([varargin{a}, ' is not a valid property'])
+              end
+            end
         end
         
-        function ts = fromStruct(s)
-            ts = RCM.Current.TimeSeries.create(s.Time, s.Speed,s.Direction);
+        function ts = fromStruct(s, varargin)
+            ts = RCM.Current.TimeSeries.create(s.Time, s.Speed, s.Direction);
 
             ts.Pressure       = s.Pressure;
             ts.Easting        = s.Easting;
             ts.Northing       = s.Northing;
             ts.HeightAboveBed = s.HeightAboveBed;
+            
+            for a = 1:2:length(varargin)
+              try
+                  TS.(varargin{a}) = varargin{a + 1};
+              catch
+                  warning([varargin{a}, ' is not a valid property'])
+              end
+            end
         end
            
     end
@@ -412,9 +436,7 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             TS.uTidal=ut;
             TS.vTidal=vt;
             TS.uNonTidal=du;
-            TS.vNonTidal=dv;
-            
-            
+            TS.vNonTidal=dv;            
         end
                 
         function [cumVec] = cumulativeVector(TS)
@@ -467,280 +489,12 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
         function tpm = tidalPhaseStd(TS, property)
             tpm = tidalPhaseStat(TS, property, 'std');
         end
-        
-        function [fit1, rSq1, fit2, rSq2] = fitMeanSpeed2TidalRange(TS, varargin)
-            [fit1, rSq1, fit2, rSq2] = RCM.Current.TimeSeries.fitProperty2TidalRange(TS, TS.waterLevels, varargin{:})
-        end
-        
-        function scaledTS = extendAndScale(TS, days, varargin)
-        end
-        
-        function scaledTS = scale(TS, queryStartTime, days, varargin)
-            % Here's the logic for scaling.
-            %
-            %
-            
-            generatePlot      = 0;
-            randomizeNonTidal = 0;
-            scaleUniformly    = 0;
-            
-            if ~isempty(varargin)
-                for i = 1:2:size(varargin,2) % only bother with odd arguments, i.e. the labels
-                    switch varargin{i}
-                      case 'plot'
-                          generatePlot = varargin{i+1};
-                      case 'randomizeNonTidal'
-                          randomizeNonTidal = varargin{i+1};
-                      case 'scaleUniformly'
-                          scaleUniformly = varargin{i+1};
-                    end
-                end   
-            end
-                        
-            [uFitFlood, vFitFlood, uFitEbb, vFitEbb] = RCM.Current.TimeSeries.fitTidalComponents2WaterLevelChange(TS, TS.waterLevels, varargin{:})
-            
-            if isempty(TS.TotalTidePort)
-                TS.getTotalTidePort();
-            end            
-            
-            % Get heights from Total Tide for the period under consideration. 
-            % Get records for both a day before and a day after the required 
-            % time period. This ensures that we get slack water levels before 
-            % and after the time period and therefore can calculate tidal 
-            % phase ranges for every datapoint
-            ttWaterLevel = RCM.WaterLevel.TimeSeries.fromTotalTide( ...
-                queryStartTime-1, days + 2, ...
-                'resolution', TS.timeIntervalSeconds/60, 'port', TS.TotalTidePort);
-            
-            % The Total Tide record starts at midnight the day prior to our
-            % required time interval, so lets truncate it to start at the same time 
-            % as our time series (well, the closest record).
-            ttWaterLevel.truncateByTime('startTime', queryStartTime);
-            
-            % The Total Tide record spans a day longer than we need. Truncate 
-            % to the total number of days required.
-            ttWaterLevel.truncateToDays(days);
-            
-            % Normalise the data to a mean of zero. This is not really
-            % required as it doesnt affect the range between slack levels
-            % but it is good practice.
-            ttWaterLevel.normalise;
-            
-            % Get the total tide water levels for the period representing
-            % the sampled data. This will provide a reference point against
-            % which to measure the size of tide variations.
-            refWaterLevel = RCM.WaterLevel.TimeSeries.fromTotalTide( ...
-                TS.startTime-1, TS.lengthDays + 2, ...
-                'resolution', TS.timeIntervalSeconds/60, 'port', TS.TotalTidePort);
-            
-            % Truncate to same start time as sampled data
-            refWaterLevel.truncateByTime('startTime', TS.startTime);
-            
-            % Shift the water level data to the query start time point
-            refWaterLevel.shiftInTime(queryStartTime);
-                        
-            % Repeat the water levels in the first spring-neap cycle
-            % through the required time period.
-            refWaterLevel.repeatSpringNeapCycle(days);
-            
-            % normalise to zero
-            refWaterLevel.normalise;
-            
-            % find the inflection points in the spring-neap cycles for both
-            % water level records. This will belp match up spring neap
-            % periods
-            ttInflectionIdxs  = find(ttWaterLevel.isSpringNeapInflection);
-            refInflectionIdxs = find(refWaterLevel.isSpringNeapInflection);
-            
-            % We only want every *other* inflection point, since there are
-            % two inflection points in each spring-neap cycle and we want
-            % to identify *whole* spring-neap cycles. Filter out every
-            % other index.
-            ttInflectionIdxs = ttInflectionIdxs(1:2:length(ttInflectionIdxs));
-            refInflectionIdxs = refInflectionIdxs(1:2:length(refInflectionIdxs));
-            
-            % find the number of spring-neap cycles. Use min, just in case
-            % there is a discrepancy of 1 cycle. There shouldn't be!
-            numberOfSpringNeapCycles = min([length(ttInflectionIdxs) length(refInflectionIdxs)]);
-            
-            % We'll calculate the standard deviation of tidal ranges for
-            % each spring-neap cycle. This will form the basis of the
-            % comparison between the "real" tidal record and the repeated,
-            % reference one.
-            %
-            % Initialize some vectors for these.
-            ttSpringNeapStds = ones(numberOfSpringNeapCycles,1);
-            refSpringNeapStds = ones(numberOfSpringNeapCycles,1);
-            
-            % If there is insufficient data at the start of either records to
-            % get a erasonable standard deviation for the tidal ranges then
-            % just set both to unity, then their scaling factor will also
-            % just be unity. This avoids very small standard deviations
-            % being calculated from a few very similar semi-diurnal tides
-            % and causing the scaling factor to become reasonably large.
-            %
-            % We'll expect atleast half a spring-neap cycle to get a good
-            % scaling factor.
-            if ttInflectionIdxs(1) < ttWaterLevel.dataPointsPerSpringNeapCycle/2 || ...
-                    refInflectionIdxs(1) < refWaterLevel.dataPointsPerSpringNeapCycle/2
-                
-                ttSpringNeapStds(1)  = 1;
-                refSpringNeapStds(1) = 1;
-            else
-                ttSpringNeapStds(1)  = max(abs(ttWaterLevel.TidalRange(1:ttInflectionIdxs(1)-1)));
-                refSpringNeapStds(1) = max(abs(refWaterLevel.TidalRange(1:refInflectionIdxs(1)-1)));
-            end
-            
-            for snc = 1:numberOfSpringNeapCycles-1
-                ttSpringNeapStds(snc+1)  = max(abs(ttWaterLevel.TidalRange(ttInflectionIdxs(snc):ttInflectionIdxs(snc+1)-1)));
-                refSpringNeapStds(snc+1) = max(abs(refWaterLevel.TidalRange(refInflectionIdxs(snc):refInflectionIdxs(snc+1)-1)));
-            end
-            
-            % As above - set scaling factor to unity if there is
-            % insufficient data at the end of either record.
-            if (ttWaterLevel.length - ttInflectionIdxs(numberOfSpringNeapCycles)) < ttWaterLevel.dataPointsPerSpringNeapCycle || ...
-                   (refWaterLevel.length - refInflectionIdxs(numberOfSpringNeapCycles)) < refWaterLevel.dataPointsPerSpringNeapCycle
-                 
-                ttSpringNeapStds(numberOfSpringNeapCycles)  = 1;
-                refSpringNeapStds(numberOfSpringNeapCycles) = 1;
-            else
-                ttSpringNeapStds(numberOfSpringNeapCycles)  = max(abs(ttWaterLevel.TidalRange(ttInflectionIdxs(end):end)));
-                refSpringNeapStds(numberOfSpringNeapCycles) = max(abs(refWaterLevel.TidalRange(refInflectionIdxs(end):end)));
-            end
-              
-            % Calculate spring-neap size difference factors by taking ratio of 
-            % the spring-neap tidal range standard deviations for "real" and 
-            % reference water levels
-            rangeRatios = ttSpringNeapStds./refSpringNeapStds;
-            
-            % Map the size difference factors to each data point
-            rangeRatiosPerTimeStep = ones(refWaterLevel.length,1);
-            
-            rangeRatiosPerTimeStep(1:refInflectionIdxs(1)-1,1) = rangeRatios(1);
-
-            for i = 1:numberOfSpringNeapCycles-1
-               rangeRatiosPerTimeStep(refInflectionIdxs(i):refInflectionIdxs(i+1)-1,1) = rangeRatios(i+1);
-            end
-            
-            rangeRatiosPerTimeStep(refInflectionIdxs(end):end,1) = rangeRatios(end);
-  
-            scaledTS = TS.clone;
-            scaledTS.shiftInTime(queryStartTime);
-            scaledTS.repeatSpringNeapCycle(days+1);
-            scaledTS.truncateByIndex('endIndex', ttWaterLevel.length)
-                                
-            scaledTS.waterLevels.normalise;
-            
-            if scaleUniformly
-                scalingFactor = rangeRatiosPerTimeStep;
-            else
-                scalingFactor = rangeRatiosPerTimeStep.^refWaterLevel.springNeapPhase;
-            end      
-%             
-%             % ensure equal lengths
-%             % not clear why they occassionally differ
-%             scalingFactor = scalingFactor(1:scaledTS.length)
-            
-            UFlood = scalingFactor.*scaledTS.uTidal + (1-scalingFactor).*uFitFlood(2);
-            VFlood = scalingFactor.*scaledTS.vTidal + (1-scalingFactor).*vFitFlood(2);
-            UEbb   = scalingFactor.*scaledTS.uTidal + (1-scalingFactor).*uFitEbb(2);
-            VEbb   = scalingFactor.*scaledTS.vTidal + (1-scalingFactor).*vFitEbb(2);
-
-            scaledTS.uTidal = UFlood;
-            scaledTS.vTidal = VFlood;
-            
-            ebbIdxs = ttWaterLevel.gradient < 0;
-%             % ensure equal lengths
-%             % not clear why they occassionally differ
-%             ebbIdxs = ebbIdxs(1:scaledTS.length)
-            
-            scaledTS.uTidal(ebbIdxs) = UEbb(ebbIdxs);
-            scaledTS.vTidal(ebbIdxs) = VEbb(ebbIdxs) ;
-            
-            [scaledTS.SpeedTidal, scaledTS.DirectionTidal] = RCM.Utils.uv2spd(scaledTS.uTidal,scaledTS.vTidal);
-            
-            if randomizeNonTidal
-                scaledTS.uNonTidal = scaledTS.uNonTidal(randperm(size(scaledTS.uNonTidal,1)), :);
-                scaledTS.vNonTidal = scaledTS.vNonTidal(randperm(size(scaledTS.vNonTidal,1)), :);
-            end
-            
-            scaledTS.u = scaledTS.uTidal + scaledTS.uNonTidal;
-            scaledTS.v = scaledTS.vTidal + scaledTS.vNonTidal;
-            
-            [scaledTS.Speed, scaledTS.Direction] = RCM.Utils.uv2spd(scaledTS.u,scaledTS.v); 
-            
-            meanPressure = mean(scaledTS.Pressure);
-            % This may be out of phase. Maybe do a scaled up pressure
-            % record.
-            scaledTS.Pressure = ttWaterLevel.Height + meanPressure;
-            scaledTS.clearDerivedProperties;
-            
-            if generatePlot
-                figure;
-                subplot(511);
-                plot(abs(ttWaterLevel.TidalRange), 'b');
-                grid on;
-                hold on
-                
-                plot(abs(refWaterLevel.TidalRange), 'r');
-                
-                plot(rangeRatiosPerTimeStep, 'g', 'LineWidth', 3);
-                
-                subplot(512);
-                plot(refWaterLevel.springNeapPhase, 'k', 'LineWidth', 3);
-                grid on;
-                hold on;
-                
-                plot(scalingFactor, 'k', 'LineWidth', 3);
-                
-                subplot(513);
-                plot(scaledTS.SpeedTidal, 'k--');
-                grid on;
-                
-                [SpeedNonTidal,~] = RCM.Utils.uv2spd(scaledTS.uNonTidal, scaledTS.vNonTidal);
-                
-                subplot(514);
-                plot(SpeedNonTidal, 'k--');
-                grid on;
-                
-                subplot(515);
-                plot(scaledTS.Speed, 'k--');
-                grid on;
-            end
-        end
-
          
         function [str] = toStruct(TS)
             % Returns a struct representation of the object.
             
             str = struct(TS);
         end
-        
-        function [str] = toArchiveStruct(TS)
-            % Returns a struct representation of the object with the names
-            % of some fields changed to be consistent with OceanMet archive
-            % conventions
-            
-            str = TS.toStruct;
-            
-            aliases = {...
-                'Time',      'timeGmt';...
-                'Speed',     'speed';...
-                'Direction', 'directionMagnetic';...
-                'u',         'velocityU';...
-                'v',         'velocityV';
-                'Pressure',  'pressureDepth'...
-                };
-            
-            for i = 1:size(aliases,1)
-                str.(aliases{i,2}) = str.(aliases{i,1});
-                str = rmfield(str, aliases{i,1});
-            end            
-        end
-        
-    end
-    
-    methods (Access = protected)
         
         function calculateComponents(TS)
             [TS.u, TS.v] = RCM.Utils.spd2uv(TS.Speed, TS.Direction);

@@ -11,7 +11,7 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
     
     methods (Static = true)
         
-        function WL = create(time, height)
+        function WL = create(time, height, varargin)
             % Returns an instance of RCM.WaterLevel.TimeSeries based upon
             % the passed in time and height vectors.
             %
@@ -24,11 +24,19 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
             WL.Time = time;
             WL.Height = height;
             
+            for a = 1:2:length(varargin)
+              try
+                  WL.(varargin{a}) = varargin{a + 1};
+              catch
+                  warning([varargin{a}, ' is not a valid property'])
+              end
+            end
+            
             WL.calculateSlackInfo; 
             WL.calculateTidalRanges;
         end
         
-        function wl = fromTotalTideStruct(str)
+        function wl = fromTotalTideStruct(str, varargin)
             % Returns an instance of RCM.WaterLevel.TimeSeries based upon
             % the passed in struct, the format of which is the same as that
             % outputted by TotalTide 'get height' functions.
@@ -36,7 +44,7 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
             % Slack water level information (e.g. slack indexes, high water
             % indexes, tidal ranges) are automatically computed.
             %
-            wl = RCM.WaterLevel.TimeSeries.create(str.time', str.height');
+            wl = RCM.WaterLevel.TimeSeries.create(str.time', str.height', varargin{:});
         end
         
         function wl = fromTotalTide(startDate, lengthDays, varargin)
@@ -85,26 +93,26 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
             
             if ~isequal(class(port), 'Interface.CherSoft_TotalTide_Application_1.0_Type_Library.IPort')
                if isnumeric(easting) && isnumeric(northing) && ~isempty(easting) && ~isempty(northing)
-                   port = TotalTide.closestStation(easting, northing, 'EN');
+                   port = TotalTide.closestPort(easting, northing, 'format', 'OSGB');
                elseif isnumeric(latitude) && isnumeric(longitude) && ~isempty(latitude) && ~isempty(longitude)
-                   port = TotalTide.closestStation(latitude, longitude);
+                   port = TotalTide.closestPort(latitude, longitude);
                else
                    error('RCM:InvalidArgument', 'Insufficient data to locate nearest Total Tide port. Specify a port object, easting/northing or lat/long.');                   
                end
             end
                         
             if slack
-                ttStruct = TotalTide.getStationSlackHeights(port, ...
-                    datestr(startDate, 'dd/mm/yyyy'), ...
+                ttStruct = TotalTide.getSlackHeights(port, ...
+                    startDate, ...
                     lengthDays);
             else
-                ttStruct = TotalTide.getStationHeights(port, ...
-                    datestr(startDate, 'dd/mm/yyyy'), ...
+                ttStruct = TotalTide.getHeights(port, ...
+                    startDate, ...
                     lengthDays, ...
                     resolution);
             end
             
-            wl = RCM.WaterLevel.TimeSeries.fromTotalTideStruct(ttStruct);
+            wl = RCM.WaterLevel.TimeSeries.fromTotalTideStruct(ttStruct,varargin{:});
             
             wl.TotalTidePort = port;
             wl.Latitude      = port.Latitude;
@@ -116,7 +124,9 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
             %
             % The scale parameter represents how many datapoints around
             % each candidate turning point to search for maxima or minima. This
-            % helps to avoid false turning points.
+            % helps to avoid false turning points. A useful rule of thumb
+            % is to use the number of datapoints that comprise about half
+            % of the expected cycle period.
 
             % This works by doing two things
             %
@@ -135,6 +145,7 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
             %     check around each candidate point. The appropriate size of the scale
             %     parameter will be related to the density of the observations.
             %
+           
             
             isSlack     = zeros(length(data),1);
             isHighWater = zeros(length(data),1);
@@ -392,10 +403,19 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
         end
         
         function issni = isSpringNeapInflection(WL)
+            % Returns a boolean vector describing whether each data point
+            % represents the transition point from spring to neap or vice
+            % versa. Obviously, most points are 0, with only the transition
+            % points = 1.
+            
             issni = diff(WL.isSpringOrNeap) ~= 0;
         end
         
         function snph = springNeapPhase(WL)
+            % Returns a vector describing the position of every data point
+            % relative to the spring-neap cycle. A value of 1 represents peak
+            % spring and a value of -1 represents peak neap.
+            
             if WL.length < WL.dataPointsPerSpringNeapCycle
                 error('Time series shorter than mean spring-neap cycle');
             end
@@ -407,6 +427,9 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
         end
         
         function iss = isSpringOrNeap(WL)
+            % Returns a vector describing whether each data point
+            % occurs within the spring or neap period.
+            
             iss = sign(WL.springNeapPhase);
         end
         

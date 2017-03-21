@@ -72,11 +72,11 @@ classdef (Abstract) Plotter < handle
     end
     
     methods
-        function h = scatterPlot(TS, name, depth)
+        function h = scatterPlot(TS)
             % Generates a scatterplot of the current vectors
             
             legend = struct('A', 'raw data', 'B', 'major axis');
-            h = RCM.Current.TimeSeries.componentScatterPlot(TS.u, TS.v, 'majorAxis', TS.MajorAxis, 'title', [name,', currents - ', depth, ' m above bed'], 'legend', legend);
+            h = RCM.Current.TimeSeries.componentScatterPlot(TS.u, TS.v, 'majorAxis', TS.MajorAxis, 'legend', legend);
         end
         
         function h =normalisedScatterPlot(TS, name, depth)
@@ -96,7 +96,7 @@ classdef (Abstract) Plotter < handle
             grid on;
         end
               
-        function h = timeSeriesPlot(TS, name, depth)
+        function h = timeSeriesPlot(TS)
             % Generates a time series plot describing the water level,
             % current speeds and directions
             
@@ -108,7 +108,6 @@ classdef (Abstract) Plotter < handle
             set(gca, 'XTickLabel', datestr(TS.Time(ceil(linspace(1,size(TS.Time,1),5))),2));
             xlabel('Date');
             ylabel('Water level (m)');
-            title([name,' - ', depth, ' m above bed']);
 
             subplot(312);
             plot(TS.Time, TS.Speed);

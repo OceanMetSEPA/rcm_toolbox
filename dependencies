@@ -7,3 +7,15 @@ source = fileExchange
 id = 46523
 version = 1
 installation.tag = 1.0
+
+name = totaltide_toolbox
+source = github
+username = OceanMetSEPA
+repository = totaltide_toolbox
+tag = 0.0.8
+
+name = os_toolbox
+source = github
+username = OceanMetSEPA
+repository = os_toolbox
+tag = 0.0.4

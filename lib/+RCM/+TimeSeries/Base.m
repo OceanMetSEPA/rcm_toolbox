@@ -150,10 +150,12 @@ classdef Base < dynamicprops
         end
         
         function [idx, bool] = closestRecordToTimeIndex(B, time)
-            % Returns the closest index the reference time provided, which
-            % should be a MATLAB datenum. The second output is a boolean
-            % which indicates whether the datenum provided is actually overlapping 
-            % with the time series
+            % Returns the index of the record closest to the reference time 
+            % provided, which should be a MATLAB datenum. The second output 
+            % is a boolean which indicates whether the datenum provided is 
+            % actually overlapping with the time series. If it is not then
+            % either the first or last index is returned, which ever is
+            % appropriate.
             
             bool = 0;
             
@@ -214,7 +216,7 @@ classdef Base < dynamicprops
             l = {meta.PropertyList(derivedPropertyIndexes).Name};
         end
         
-        function l = listTimeStepProperties(B)
+        function l = timeSeriesPropertyNames(B)
             % Lists the names of all properties which describe time series
             % data - that is, include a data point for each time step in
             % the time series.
@@ -223,8 +225,8 @@ classdef Base < dynamicprops
             meta = metaclass(B);
             
             % Find properties with same length as time vector
-            timeStepPropertyIndexes = cellfun(@(x) length(B.(x)) == B.length, {meta.PropertyList.Name});
-            l = {meta.PropertyList(timeStepPropertyIndexes).Name};
+            timeSeriesPropertyIndexes = cellfun(@(x) length(B.(x)) == B.length, {meta.PropertyList.Name});
+            l = {meta.PropertyList(timeSeriesPropertyIndexes).Name};
         end
         
         function clearDerivedProperties(B, varargin)
@@ -293,10 +295,6 @@ classdef Base < dynamicprops
             % end or both, with the indexes specified using the
             % 'startIndex' and 'endIndex' options.
             %
-            % Any derived properties are not regenerated automatically and
-            % so refreshing these using the .clearDerivedProperties()
-            % method might be appropriate after truncating.
-            %
             
             originalLength = B.length;
             
@@ -340,6 +338,8 @@ classdef Base < dynamicprops
                     end
                 end
             end
+            
+            B.clearDerivedProperties;
         end
         
         function truncateByTime(B, varargin)
@@ -347,10 +347,6 @@ classdef Base < dynamicprops
             % passed in. The time series can be truncated from the start, 
             % end or both, with the times specified as datenums using the
             % 'startTime' and 'endTime' options.
-            %
-            % Any derived properties are not regenerated automatically and
-            % so refreshing these using the .clearDerivedProperties()
-            % method might be appropriate after truncating.
             %
             
             startTime = B.Time(1);
@@ -371,6 +367,8 @@ classdef Base < dynamicprops
             endIdx   = B.closestRecordToTimeIndex(endTime);
             
             B.truncateByIndex('startIndex', startIdx, 'endIndex', endIdx);
+            
+            B.clearDerivedProperties;
         end
         
         function truncateToDays(B, requiredLengthDays)
@@ -379,10 +377,6 @@ classdef Base < dynamicprops
             %
             % If the time series object is shorter than the specified
             % number of days an error is raised.
-            %
-            % Any derived properties are not regenerated automatically and
-            % so refreshing these using the .clearDerivedProperties()
-            % method might be appropriate after truncating.
             %
 
             % Raise error if time series shorter than specified size
@@ -394,6 +388,8 @@ classdef Base < dynamicprops
             
             requiredDataPoints = round((requiredLengthDays * 24 * 60 * 60) / B.timeIntervalSeconds) + 1;
             B.truncateByIndex('endIndex', requiredDataPoints);
+            
+            B.clearDerivedProperties;
         end
         
         function truncateToSpringNeapCycle(B)
@@ -402,10 +398,6 @@ classdef Base < dynamicprops
             %
             % If the time series object is shorter than the average spring-
             % neap cycle an error is raised.
-            %
-            % Any derived properties are not regenerated automatically and
-            % so refreshing these using the .clearDerivedProperties()
-            % method might be appropriate after truncating.
             %
             
             B.truncateToDays(RCM.Constants.Tide.SpringNeapAverageDays);
@@ -444,7 +436,13 @@ classdef Base < dynamicprops
             % option. It follows that this option must be used in
             % conjunction with the repeatLength option, and that the repeat
             % length must be smaller than the original time series length
-            % minus the desired offset size. If not, an error is raised.
+            % minus the desired offset size. If not, an error is raised. As
+            % an example, this approach is used by the
+            % .repeatSpringNeapCycle() function to sample only the number
+            % of records that constitute a spring-neap cycle but also to
+            % alternate the sampling interval to compensate for the
+            % non-integer number of semi-diurnal cycles within a
+            % spring-neap cycle.
             %
             
             % We dont want to insist that the cycles argument is an int
@@ -553,6 +551,8 @@ classdef Base < dynamicprops
                     end
                 end
             end
+            
+            B.clearDerivedProperties;
         end
         
         function repeatForDays(B, requiredLengthDays, varargin)
@@ -582,22 +582,24 @@ classdef Base < dynamicprops
             cycles = ceil(requiredLengthDays/repeatLengthDays);
 
             B.repeat(cycles, varargin{:});
-            B.truncateToDays(requiredLengthDays);            
+            B.truncateToDays(requiredLengthDays);    
+            
+            B.clearDerivedProperties;        
         end
         
         function repeatSpringNeapCycle(B, requiredLengthDays)
             % Repeats the data within the first spring-neap tidal cycle for the 
             % number of days specified.
             %
-            % This function uses the average spring-neap period of 14.75 days. 
+            % This function uses the average spring-neap period of 14.77 days. 
             % Since the average period of a semi-diurnal tidal cycle is 12 h 25 m 
             % we get 28.51 cycles in a spring-neap cycle:
             %
-            %   (14.77*(24/(12 + 25/60)) = 28.5457248). 
+            %   14.77*(24/(12 + 25/60)) = 28.5457248 
             % 
             % So there are twenty-eight and a half semi-diurnal cycles in an 
             % average spring-neap cycle. This means if we just repeat a 14.77 
-            % day timeseries, there will be a half a phase discrepancy between 
+            % day timeseries, there will be a half a phase(-ish) discrepancy between 
             % each successive repeating sequence.
             %
             % To smooth out this discontinuity, the function samples the original
@@ -627,7 +629,8 @@ classdef Base < dynamicprops
             dataPointsPerTidalHalfCycle  = B.dataPointsPerSemiDiurnalHalfCycle;
             dataPointsPerSpringNeapCycle = B.dataPointsPerSpringNeapCycle;
             
-            smoothingOffset = round(floor((RCM.Constants.Tide.SemiDiurnalHalfCycleSeconds*1.0974496644295)/B.timeIntervalSeconds));
+            smoothingOffset = round(floor((RCM.Constants.Tide.SemiDiurnalHalfCycleSeconds ...
+                * RCM.Constants.Tide.SemiDiurnalHalfCycleSpringNeapExcessFactor)/B.timeIntervalSeconds));
 
             if B.length < (dataPointsPerSpringNeapCycle + smoothingOffset)
                 requiredExtensionPoints = (dataPointsPerSpringNeapCycle + smoothingOffset + 1) - B.length;
@@ -638,6 +641,12 @@ classdef Base < dynamicprops
         end
         
         function extendSemiDiurnalCycle(B, numberOfPoints)
+            % Extends the record by the number of points specified by
+            % sampling the end of the record and repeating those values
+            % appropriately. This is only suitable for patching a few
+            % semi-diurnal cycles as any spring-neap variations will not be
+            % appropriately represented.
+            
             originalLengthPoints = B.length
                         
             B.Time((originalLengthPoints + 1):(originalLengthPoints + numberOfPoints)) = ...
@@ -691,12 +700,10 @@ classdef Base < dynamicprops
             % Adjusts the time vector to run from the new start time
             % specified, preserving the same time interval between values.
             %
-            % Any time dependent value vectors are also shifted with
-            % respect to the spring-neap cycle in order to preserve the
-            % position of values with respect to semi-diurnal and
-            % spring-neap sequences. In other words, values relating to
-            % floods or ebbs, slack water levels, spring or neap phases are
-            % retained within this context.
+            % Any time dependent value vectors are also rolled through the
+            % the spring-neap cycle such that periods relating to floods or ebbs, 
+            % slack water levels, spring or neap phases are retained within their 
+            % (approximately) correct context with repsect to the new start time.
             
             existingLength     = B.length;
             existingLengthDays = B.lengthDays;
@@ -715,7 +722,7 @@ classdef Base < dynamicprops
             % additional half semi-diurnal cycle period.
             SemiDiurnalHalfCycleDays = RCM.Constants.Tide.SemiDiurnalHalfCycleSeconds / (60 * 60 *24);
             B.Time = B.Time + (RCM.Constants.Tide.SpringNeapAverageDays * wholeSNCycles) ...
-                + sign(wholeSNCycles) * oddCycles * SemiDiurnalHalfCycleDays * 1.0974496644295;
+                + sign(wholeSNCycles) * oddCycles * SemiDiurnalHalfCycleDays * RCM.Constants.Tide.SemiDiurnalHalfCycleSpringNeapExcessFactor;
 
             B.repeatSpringNeapCycle(existingLengthDays * 2);
             B.truncateByTime('startTime', newStartTime);
@@ -725,6 +732,15 @@ classdef Base < dynamicprops
         end
         
         function concatenate(B, otherTS)
+            % Concatenates the passed in time series object to the end of the
+            % current time series object. All time-dependent properties are
+            % concatenated with no attempt to validate or reconcile values.
+            %
+            % This function can be used in conjuction with .shiftInTime()
+            % in order to produce longer time series comprise multiple
+            % individual time series.
+            
+            
             meta = metaclass(B);
             
             otherLength = otherTS.length;
@@ -779,7 +795,7 @@ classdef Base < dynamicprops
             % the set .Easting and .Northing properties
             
             if ~(TS.Easting == 0) & ~(TS.Northing == 0)
-                [TS.Longitude,TS.Latitude] = OS.catCoordinates(TS.Easting, TS.Northing,'from','EN','to','LL');
+                [TS.Longitude,TS.Latitude] = OS.convertAndTransform(TS.Easting, TS.Northing,'from','EN','to','LL');
             end
         end
      end

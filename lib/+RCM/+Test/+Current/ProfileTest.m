@@ -22,12 +22,12 @@ classdef ProfileTest < matlab.unittest.TestCase
             testDir = what('RCM\+Test');
             
             % load the fixture data into the 'fixture' variable
-            load([testDir.path,'\profileFixture.mat'])
+            load([testDir.path,'\Fixtures\profile.mat'])
             
             % instantiate a TimeSeries object using fixture data (datetime,
             % speed and direction)
             testCase.FixtureData = fixture';
-            testCase.Profile     = RCM.Profile(...
+            testCase.Profile     = RCM.Current.Profile(...
                 'SiteName', 'Test Bay', ...
                 'SiteID',   'TES1',...
                 'Easting',  123456,...
@@ -56,8 +56,6 @@ classdef ProfileTest < matlab.unittest.TestCase
         function checkConstructorSiteID(testCase)          
           verifyEqual(testCase, testCase.Profile.SiteID, 'TES1');
         end
-        
-
-       
+               
     end
 end

@@ -21,7 +21,7 @@ classdef Profile < dynamicprops
     %
     % EXAMPLES:
     %
-    %    profile = RCM.Profile('SiteName', 'Gorsten', 'Easting', 123456,
+    %    profile = RCM.Profile('SiteName', 'A site', 'Easting', 123456,
     %    'Northing', 987654);
     %
     %    profile.addBin(timeseries1);
