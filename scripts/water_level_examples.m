@@ -125,9 +125,9 @@ wl.plotWithSlackPoints
 %% Normalize the water levels to mean sea level
 
 wl.normalise
-wl.plot
 
-% This changes the object in situ. If the original object needs to be
+% This changes the object in situ, basically subtracting the mean water depth from all values 
+% and resulting in a time series with a mean of ~0. If the original object needs to be
 % retained a new normailised water level object can be instantiated like
 % this:
 

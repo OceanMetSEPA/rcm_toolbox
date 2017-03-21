@@ -13,6 +13,8 @@ This toolbox works best with the following packages
 
 ## Examples
 
+The following examples are reproduced with sample data in the \scripts directory.
+
 ### Current data
 
 #### Create a current time series object
@@ -202,7 +204,7 @@ If a pressure record is available then this can be analysed as a RCM.WaterLevel.
 
     ts.waterLevels.plot
 
-More on these object, next.
+More on these objects, next.
 
 ### Water level data
 
@@ -328,7 +330,127 @@ and with slack points highlighted
     wl.normalise
     wl.plot
 
-This changes the object in situ. If the original object needs to be retained a new normailised water level object can be instantiated like this:
+This changes the object in situ, basically subtracting the mean water depth from all values and resulting in a time series with a mean of ~0.
+
+If the original object needs to be retained a new normailised water level object can be instantiated like this:
 
     normWL = wl.toNormalised
 
+### Interacting with Admiralty TotalTide
+
+If a working installation of TotalTide is available then data can be retrieved directly into RCM.WaterLevel.TimeSeries object where it can be readily manipulated using the functionality described above.
+
+#### Create a water level object directly from Admiralty TotalTide
+
+This requires a working installation of TotalTide and also either easting/northing or lat/long references
+
+Pass in the required start date as a datenum and the length required in days
+    
+    wl = RCM.WaterLevel.TimeSeries.fromTotalTide(now, 30, 'easting', 164789, 'northing', 709911)
+
+which returns
+
+    % wl = 
+    %   TimeSeries with properties:
+    % 
+    %            Height: [720x1 double]
+    %           isSlack: [720x1 double]
+    %       isHighWater: [720x1 double]
+    %        TidalRange: [720x1 double]
+    %              Time: [720x1 double]
+    %           Easting: 164789
+    %          Northing: 709911
+    %          Latitude: 56.116666
+    %         Longitude: -5.783333
+    %     TotalTidePort: [1x1 Interface.CherSoft_TotalTide_Application_1.0_Type_Library.IPort]
+
+This dataseries can no be manipulated according the functionality on the RCM.WaterLevel.TimeSeries class, e.g.:
+
+    wl.normalise
+    wl.meanRange
+
+etc...
+    
+#### Get the closest TotalTide port to any time series
+
+Any RCM TimeSeries object, whether Current or WaterLevel, can be used as the basis for discovering the nearest TotalTide port
+
+Initialise Current TimeSeries object
+
+    ts = RCM.Current.TimeSeries.create(timeVector, speedVector, directionVector, 'Easting', easting, 'Northing', northing)
+
+Obtain nearest Total Tide port (requires geographic information on the time series)
+
+    port = ts.getTotalTidePort
+
+    % port =
+    % 	Interface.CherSoft_TotalTide_Application_1.0_Type_Library.IPort
+    %                      Number: '0277'
+    %                        Name: 'Pierowall'
+    %                    Latitude: 59.316666
+    %                   Longitude: -2.983333
+    %                 StationType: 'PortNonHarmonic'
+    %                      IsPort: 1
+    %                    IsStream: 0
+    %                    Filtered: 1
+    %                     Country: 'Scotland'
+    %                    ZoneTime: 0
+    %                      Height: 1.9118896994554
+    %            HighestHighWater: 3.7
+    %             LowestHighWater: 2.8
+    %             HighestLowWater: 1.4
+    %              LowestLowWater: 0.6
+    %                MeanSeaLevel: [1x105 char]
+    %      DaysToOrFromSpringTide: -6
+    %     HighestAstronomicalTide: 4.3
+    %      LowestAstronomicalTide: -0.1
+    %         MinimumDisplayScale: 5000000
+    %                  TypeOfPort: 'PortSecondaryNonHarmonic'
+
+This can be used to form the basis of subsequent TotalTide queries. It is memoised on the time series object for easy access in the TotalTidePort property.
+
+#### Get a TotalTide water level record for the nearest port to any time series
+
+Any RCM TimeSeries object, whether Current or WaterLevel, can generate a corresponding TotalTide water level time series easily. If the nearest port is not yet know then it is established automatically and is memoised on the time object for subsequent queries.
+
+Obtain Total Tide water level from nearest port (requires geographic information on the time series)
+
+    wl = ts.totalTideWaterLevels
+
+    % wl = 
+    %   TimeSeries with properties:
+    % 
+    %            Height: [1123x1 double]
+    %           isSlack: [1123x1 double]
+    %       isHighWater: [1123x1 double]
+    %        TidalRange: [1123x1 double]
+    %              Time: [1123x1 double]
+    %           Easting: 347967
+    %          Northing: 1049310
+    %          Latitude: 59.316666
+    %         Longitude: -2.983333
+    %     TotalTidePort: [1x1 Interface.CherSoft_TotalTide_Application_1.0_Type_Library.IPort]
+
+By default this function generates a water level record corresponding to exactly the time period of the time series at 60 minute resolution. These can be altered by specifying the lengthDays, offsetDays (relative to the time  series start date), and resolution (in minutes) options.
+
+#### Get a year of TotalTide water levels around the time series start date
+
+To quickly get a years worth of water level data from TotalTide in reference to the location and start time of a TimeSeries object then:
+
+    wl = ts.totalTideYear
+
+    % wl = 
+    %   TimeSeries with properties:
+    % 
+    %            Height: [8760x1 double]
+    %           isSlack: [8760x1 double]
+    %       isHighWater: [8760x1 double]
+    %        TidalRange: [8760x1 double]
+    %              Time: [8760x1 double]
+    %           Easting: 347967
+    %          Northing: 1049310
+    %          Latitude: 59.316666
+    %         Longitude: -2.983333
+    %     TotalTidePort: [1x1 Interface.CherSoft_TotalTide_Application_1.0_Type_Library.IPort]
+
+This may take a few seconds due to the nature of the TotalTide API.

@@ -117,6 +117,14 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
             wl.TotalTidePort = port;
             wl.Latitude      = port.Latitude;
             wl.Longitude     = port.Longitude;
+            
+            if ~isempty(easting)
+                wl.Easting = easting;
+            end
+            
+            if ~isempty(northing)
+                wl.Northing = northing;
+            end
         end
         
         function [isSlack, isHighWater] = findSlackWaterPoints(data, scale)

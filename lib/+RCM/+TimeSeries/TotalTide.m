@@ -55,6 +55,7 @@ classdef (Abstract) TotalTide < handle
             %
             
             % plot water heights
+            figure;
             ts = waterLevel.plot;
             hold on;
             
@@ -63,6 +64,7 @@ classdef (Abstract) TotalTide < handle
             a = area([samplingStartDate addtodate(samplingStartDate, sampleLengthDays, 'day')], ...
                 [ylim(2) ylim(2)], ...
                 ylim(1));
+            
             set(gca,'Children',  [ts a]);
             set(a,  'FaceColor', 'r');
             set(a,  'LineStyle', 'none');
@@ -70,7 +72,6 @@ classdef (Abstract) TotalTide < handle
             % format
             title([waterLevel.TotalTidePort.Name, ', ', waterLevel.TotalTidePort.Country, ' (', num2str(waterLevel.TotalTidePort.Latitude), ', ', num2str(waterLevel.TotalTidePort.Longitude), ')']);
             ylabel('Height above OS Datum (m)');
-            adjustAxes; 
         end
         
     end
