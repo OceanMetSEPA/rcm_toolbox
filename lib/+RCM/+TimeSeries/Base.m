@@ -426,7 +426,7 @@ classdef Base < dynamicprops
             % repeatLength is greater than the total length of the time
             % series, then an error is raised.
             %
-            % An other option is the 'offset' option. This option
+            % Another option is the 'offset' option. This option
             % enables alternating repeating cycles to be sampled a different 
             % part of the original time series - offset from the start by the 
             % number of records specfied. This can be useful for smoothing out
