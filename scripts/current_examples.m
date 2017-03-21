@@ -68,6 +68,11 @@ ts = RCM.Current.TimeSeries.create(rawData.Time, rawData.Speed, rawData.Directio
 %
 % ts = RCM.Current.TimeSeries.createFromComponents(time, u, v)
 %
+% A further way to instantiate is to pass in the path of a SEPA HGAnalysis
+% xls file
+%
+% ts = RCM.Current.TimeSeries.fromHGAnalysisXls(path)
+%
 
 %% Inspect time series
 

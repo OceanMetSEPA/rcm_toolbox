@@ -66,6 +66,9 @@ Note, current time series objects can alternatively be instantiated using u and 
 
     ts = RCM.Current.TimeSeries.createFromComponents(timeVector, uVector, vVector)
 
+And a final way is to pass in the path of a SEPA HGAnalysis xls file
+
+    ts = RCM.Current.TimeSeries.fromHGAnalysisXls('\\path\to\file')
 
 #### Inspect current time series
 

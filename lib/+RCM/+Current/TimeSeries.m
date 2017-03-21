@@ -208,6 +208,71 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             end
         end
         
+        function TS = fromHGAnalysisXls(path, varargin)
+            rowLimit = '1089';
+            
+            for a = 1:length(varargin)
+                switch varargin{a}
+                    case 'rowLimit'
+                      rowLimit = varargin{a + 1};
+                end
+            end
+            
+            data = struct;
+            data.Filename = path;
+            data.Sheet    = 'Current Meter Data';
+            data.Easting  = xlsread(data.Filename, data.Sheet, 'C1');
+            data.Northing = xlsread(data.Filename, data.Sheet, 'D1');
+
+            data.DateTime  = [];
+            data.Speed     = [];
+            data.Direction = [];
+            data.Pressure  = [];
+
+            dataRowsColumns = ['A9:D', num2str(rowLimit)];
+
+            [numData,textData,~] = xlsread(data.Filename, data.Sheet, dataRowsColumns);
+
+            % Import Date & Time Surface
+            for i=1:length(textData(:,1));
+                if length(textData{i,1})==10;
+                    tempString=strcat(textData(i,1),' 00:00:00');
+                    data.DateTime(i)=datenum(tempString,'dd/mm/yyyy HH:MM:SS');
+                else
+                    data.DateTime(i)=datenum(textData(i,1),'dd/mm/yyyy HH:MM:SS');
+                end 
+            end
+
+            data.DateTime  = data.DateTime'; % transpose to make consistent
+            data.Speed     = numData(:,1);
+            data.Direction = numData(:,2);
+
+            [~, columns] = size(numData);
+            if columns > 2
+                data.Pressure  = numData(:,3);
+            end
+            
+            TS = RCM.Current.TimeSeries.create(data.DateTime,data.Speed,data.Direction);
+            
+            TS.Pressure = data.Pressure;
+            TS.Easting  = data.Easting;
+            TS.Northing = data.Northing;
+            
+            for a = 1:2:length(varargin)
+              try
+                  TS.(varargin{a}) = varargin{a + 1};
+              catch
+                  warning([varargin{a}, ' is not a valid property'])
+              end
+            end
+            
+            try
+                TS.calculateHarmonics
+            catch Err
+                warning(Err.message)
+            end
+        end
+        
         function ts = fromStruct(s, varargin)
             ts = RCM.Current.TimeSeries.create(s.Time, s.Speed, s.Direction);
 
