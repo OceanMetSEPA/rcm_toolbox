@@ -22,7 +22,7 @@ classdef ProfileTest < matlab.unittest.TestCase
             testDir = what('RCM\+Test');
             
             % load the fixture data into the 'fixture' variable
-            load([testDir.path,'\Fixtures\profile.mat'])
+            load([testDir.path,'\Fixtures\profile.mat']);
             
             % instantiate a TimeSeries object using fixture data (datetime,
             % speed and direction)
@@ -34,7 +34,7 @@ classdef ProfileTest < matlab.unittest.TestCase
                 'Northing', 67890);
                         
             for i = 1:size(testCase.FixtureData, 1)
-                testCase.Profile.addBin(testCase.FixtureData(i,1))
+                testCase.Profile.addBin(testCase.FixtureData(i,1));
             end
         end
     end

@@ -26,7 +26,7 @@ wl = RCM.WaterLevel.TimeSeries.fromTotalTide(now, 30, 'easting', 164789, 'northi
 wl.normalise
 wl.meanRange
 
-etc...
+% etc...
     
 %% Get the closest TotalTide port to any time series
 

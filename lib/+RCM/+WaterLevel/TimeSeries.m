@@ -348,8 +348,8 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
         
         function mr = meanRange(WL)
             % Returns the mean tidal range across the time series. 
-            
-            mr = nanmean(abs(WL.ranges));
+            absRanges = abs(WL.ranges);
+            mr = mean(absRanges(~isnan(absRanges)));
         end
         
         function mr = minRange(WL)
