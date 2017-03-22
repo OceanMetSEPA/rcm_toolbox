@@ -20,21 +20,21 @@ classdef TideTest < matlab.unittest.TestCase
           actSolution = 14.77;
           expSolution = RCM.Constants.Tide.SpringNeapAverageDays;
           
-          verifyEqual(testCase, actSolution, expSolution);
+          verifyEqual(testCase, actSolution, expSolution, 'AbsTol', 0.000001);
         end
 
         function testSpringNeapSeconds(testCase)
           actSolution = 1276128.0;
           expSolution = RCM.Constants.Tide.SpringNeapAverageSeconds;
           
-          verifyEqual(testCase, actSolution, expSolution);
+          verifyEqual(testCase, actSolution, expSolution, 'AbsTol', 0.000001);
         end
 
         function testSemiDiurnalHalfCycleSeconds(testCase)
           actSolution = 22350;
           expSolution = RCM.Constants.Tide.SemiDiurnalHalfCycleSeconds;
           
-          verifyEqual(testCase, actSolution, expSolution);
+          verifyEqual(testCase, actSolution, expSolution, 'AbsTol', 0.000001);
         end
         
     end
