@@ -307,9 +307,9 @@ classdef Profile < dynamicprops
                 grid on
             end
             
-            adjustAxes;
-            linkaxes(h,'x');
-            pan xon;      
+%             adjustAxes;
+%             linkaxes(h,'x');
+%             pan xon;      
         end
                 
         function scatterPlot3D(P)
