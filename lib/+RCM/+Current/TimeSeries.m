@@ -209,12 +209,15 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
         end
         
         function TS = fromHGAnalysisXls(path, varargin)
-            cellRef = '';
+            startRow = [];
+            endRow   = [];
             
             for a = 1:length(varargin)
                 switch varargin{a}
-                    case 'cellRef'
-                      cellRef = varargin{a + 1};
+                    case 'startRow'
+                      startRow = varargin{a + 1};
+                    case 'endRow'
+                      endRow = varargin{a + 1};
                 end
             end
             
@@ -229,17 +232,28 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             data.Direction = [];
             data.Pressure  = [];
 
-            [numData,textData,~] = xlsread(data.Filename, data.Sheet, cellRef);
+            [~,~,allData] = xlsread(data.Filename, data.Sheet);
+            
+            allData = allData(:, 1:4);
+            
+            % remove desired trailing rows
+            if ~isempty(endRow) & endRow < size(allData,1)
+                allData = allData(1:endRow, :);
+            end
             
             % remove header rows
-            if isempty(cellRef)
-                headerRows = isnan(numData(:,1));
-                
-                numData(headerRows,:)  = [];
-                textData(headerRows,:) = [];
-            else
-                textData(1:(size(textData,1)-size(numData,1)),:) = [];
+            if isempty(startRow) | startRow < 8
+                startRow = 8
             end
+            
+            allData = allData(startRow:end, :);            
+
+            % remove empty rows (intended to hit empty trailing cells)
+            charRows = cell2mat(cellfun(@ischar, allData(:,1), 'UniformOutput', 0));
+            allData(~charRows, :) = [];            
+            
+            textData = allData(:,1);
+            numData  = cell2mat(allData(:, 2:4));
             
             % Import Date & Time Surface
             for i=1:length(textData(:,1));
@@ -247,6 +261,7 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
                     tempString=strcat(textData{i,1},' 00:00:00');
                     data.DateTime(i)=datenum(tempString,'dd/mm/yyyy HH:MM:SS');
                 else
+                    textData{i,1};
                     data.DateTime(i)=datenum(textData{i,1},'dd/mm/yyyy HH:MM:SS');
                 end 
             end
