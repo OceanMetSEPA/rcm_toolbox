@@ -209,12 +209,12 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
         end
         
         function TS = fromHGAnalysisXls(path, varargin)
-            rowLimit = '1089';
+            cellRef = '';
             
             for a = 1:length(varargin)
                 switch varargin{a}
-                    case 'rowLimit'
-                      rowLimit = varargin{a + 1};
+                    case 'cellRef'
+                      cellRef = varargin{a + 1};
                 end
             end
             
@@ -229,10 +229,12 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             data.Direction = [];
             data.Pressure  = [];
 
-            dataRowsColumns = ['A9:D', num2str(rowLimit)];
+            [numData,textData,~] = xlsread(data.Filename, data.Sheet, cellRef);
 
-            [numData,textData,~] = xlsread(data.Filename, data.Sheet, dataRowsColumns);
-
+            % remove header rows
+            numData(1:7,:)  = [];
+            textData(1:7,:) = [];
+            
             % Import Date & Time Surface
             for i=1:length(textData(:,1));
                 if length(textData{i,1})==10;

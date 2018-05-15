@@ -91,7 +91,8 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
                 end   
             end
             
-            if ~isequal(class(port), 'Interface.CherSoft_TotalTide_Application_1.0_Type_Library.IPort')
+            if ~isequal(class(port), 'Interface.CherSoft_TotalTide_Application_1.0_Type_Library.IPort') & ...
+                    ~isequal(class(port), 'Interface.A0F2755E_49A9_4E2E_B72E_C41D51477D0B') % new version class description
                if isnumeric(easting) && isnumeric(northing) && ~isempty(easting) && ~isempty(northing)
                    port = TotalTide.closestPort(easting, northing, 'format', 'OSGB');
                elseif isnumeric(latitude) && isnumeric(longitude) && ~isempty(latitude) && ~isempty(longitude)
@@ -403,6 +404,91 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
             sh = WL.Height(WL.slackIndexes);
         end
         
+        function csh = closestSlackHeights(WL)
+            % Returns a vector describing the height of the nearest semi-diurnal
+            % slack water height to each point in the time series.
+            
+            if isempty(WL.isSlack)
+                WL.calculateSlackInfo;
+            end
+            
+            slackHeights = WL.slackHeight;
+            slackInxs    = WL.slackIndexes;
+            normalisedHeights = WL.Height - WL.mean;
+
+            csh = nan(WL.length,1);
+            csh(1:slackInxs(1),1) = slackHeights(1);
+            
+            for slw = 1:length(slackInxs)-1
+                
+               theseIdxs = slackInxs(slw):slackInxs(slw+1);
+               
+               for ts = theseIdxs
+                   if sign(normalisedHeights(ts)) == sign(slackHeights(slw))
+                        csh(ts) = slackHeights(slw);
+                   else
+                        csh(ts) = slackHeights(slw+1);
+                   end
+               end                  
+               
+            end
+            
+            csh(slackInxs(end):end,1) = slackHeights(end);
+        end
+        
+        function sws = slackWaterState(WL)
+            % Returns a vector describing the position of every data point
+            % relative to the semi-diurnal cycle. A value of 1 represents
+            % high water and a value of -1 represents low water.
+            
+            if WL.length < WL.dataPointsPerSemiDiurnalHalfCycle
+                error('Time series shorter than semi-diurnal cycle');
+            end
+             
+            sws = WL.Height./abs(WL.closestSlackHeights);
+        end
+        
+        function sws = slackWaterStage(WL)
+            % Returns a vector describing the position of every data point
+            % relative to the semi-diurnal cycle. Each data point is
+            % described by a value between 0 and 1, with 0 indicating a
+            % high water slack tide level and 1 indicating the next high
+            % water slack level
+            %
+            % This function is distinct from the similarly named
+            % .slackWaterState() in that this function enables the
+            % direciton of the cycle to be identified. For example,
+            % .slackWaterState describes a similar water level identically
+            % irrespective of whether it, for example, precedes high water
+            % or follows high water. This function allows the stage to be
+            % specifically identified - in this case a value close to 0
+            % indicates following high water and a value close to 1
+            % approaching high water.
+            
+            if WL.length < WL.dataPointsPerSemiDiurnalHalfCycle
+                error('Time series shorter than semi-diurnal cycle');
+            end
+             
+            hwi = WL.highWaterIndexes;
+            
+            sws = nan(WL.length,1);
+            
+            leadingCount = hwi(1);
+            leadingProportion = leadingCount/(2.0*WL.dataPointsPerSemiDiurnalHalfCycle);
+            
+            sws(1:hwi(1),1) = linspace(1-leadingProportion, 1, leadingCount);
+            
+            for hw = 1:length(hwi)-1
+               theseIdxs = hwi(hw):hwi(hw+1);
+               sws(theseIdxs) = linspace(0,1,length(theseIdxs));               
+            end
+            
+            trailingCount = WL.length - hwi(end) + 1;
+            trailingProportion = trailingCount/(2.0*WL.dataPointsPerSemiDiurnalHalfCycle);
+            
+            sws(hwi(end):end,1) = linspace(0, trailingProportion, trailingCount);
+        end
+        
         function fsmi = firstSpringMaxIndex(WL)
             fsmi = find(WL.Height(1:WL.dataPointsPerSpringNeapCycle) == max(WL.Height(1:WL.dataPointsPerSpringNeapCycle)));
             if length(fsmi) > 1
@@ -419,10 +505,15 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
             issni = diff(WL.isSpringOrNeap) ~= 0;
         end
         
-        function snph = springNeapPhase(WL)
+        function snph = springNeapState(WL)
             % Returns a vector describing the position of every data point
             % relative to the spring-neap cycle. A value of 1 represents peak
             % spring and a value of -1 represents peak neap.
+            %
+            % This represents an average position in the cycle extrapolated
+            % from the first identified spring max through time. It may
+            % wander out of phase slightly with repsect to any specific
+            % spring-neap periods.
             
             if WL.length < WL.dataPointsPerSpringNeapCycle
                 error('Time series shorter than mean spring-neap cycle');
@@ -432,6 +523,47 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
             w = 2*pi/RCM.Constants.Tide.SpringNeapAverageSeconds;
             
             snph = cos(w * ((t - WL.firstSpringMaxIndex).*WL.timeIntervalSeconds));
+        end
+        
+        function sns = springNeapStage(WL)
+            % Returns a vector describing the position of every data point
+            % relative to the spring-neap cycle. Each data point is
+            % described by a value between 0 and 1, with 0 indicating a
+            % spring maximum tide level and 1 indicating the next spring
+            % maximum tide level
+            %
+            % This function is distinct from the similarly named
+            % .springNeapState() in that this function enables the
+            % direciton of the cycle to be identified. For example,
+            % .springNeapState describes a similar spring neap "magnitude"
+            % identically irrespective of whether it, for example, precedes 
+            % the spring maximum or follows it. This function allows the 
+            % stage to be specifically identified - in this case a value 
+            % close to 0 indicates following the spring maximum and a value 
+            % close to 1 approaching spring maximum.
+            
+            if WL.length < WL.dataPointsPerSpringNeapCycle
+                error('Time series shorter than semi-diurnal cycle');
+            end
+             
+            smi = find(WL.isSpringMax & WL.isHighWater);
+            
+            sns = nan(WL.length,1);
+            
+            leadingCount = smi(1);
+            leadingProportion = leadingCount/WL.dataPointsPerSpringNeapCycle;
+            
+            sns(1:smi(1),1) = linspace(1-leadingProportion, 1, leadingCount);
+            
+            for sm = 1:length(smi)-1
+               theseIdxs = smi(sm):smi(sm+1);
+               sns(theseIdxs) = linspace(0,1,length(theseIdxs));               
+            end
+            
+            trailingCount = WL.length - smi(end) + 1;
+            trailingProportion = trailingCount/WL.dataPointsPerSpringNeapCycle;
+            
+            sns(smi(end):end,1) = linspace(0, trailingProportion, trailingCount);
         end
         
         function iss = isSpringOrNeap(WL)
@@ -480,6 +612,65 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
             
             wl = WL.clone;
             wl.normalise;
+        end
+        
+        function idx = equivalentTidalStageIndex(WL, targetSNS, targetSDS)
+            % Returns the index of the datapoint within the final
+            % spring-neap cycle that best approximates the tidal conditions
+            % passed in. This is useful for identifying a data point which
+            % corresponds with the conditions at a particular known point
+            % in time.
+            %
+            
+            sns = WL.springNeapStage;
+            sds = WL.slackWaterStage;
+
+            phaseDiffs = abs(sns - targetSNS) + abs(sds - targetSDS);
+            lastSpringNeapPhaseDiffs = phaseDiffs(end-WL.dataPointsPerSpringNeapCycle:end);
+            idxs = find(phaseDiffs == min(lastSpringNeapPhaseDiffs));
+            
+            idx = idxs(end);
+        end
+        
+        function idx = equivalentStartingTidalStageIndex(WL)
+            % Returns the index of the datapoint within the final
+            % spring-neap cycle that best approximates the tidal conditions
+            % of the starting datapoint. This is useful for identifying
+            % where best to truncate a dataset for repeating purposes.
+            %
+            % Generally it will be appropriate to truncate a timeseries at
+            % the index *before* the one returned by this function (i.e. idx
+            % - 1) to ensure a minimal discontinuity when repeating time
+            % series. The .truncateToStartingTidalStage() function will
+            % achieve this without having to explicitly call this function.
+            
+            sns = WL.springNeapStage;
+            sds = WL.slackWaterStage;
+            
+            idx = WL.equivalentTidalStageIndex(sns(1), sds(1));
+        end
+        
+        function [sns, sds] = tidalStageByIndex(WL, idx)
+            sns = WL.springNeapStage;
+            sds = WL.slackWaterStage;
+            
+            sns = sns(idx);
+            sds = sds(idx);
+        end
+        
+        function idx = truncateToStartingTidalStage(WL)
+            % Truncates the time series object to a similar tidal stage as
+            % the start of the series, based on the stage through both the
+            % spring-neap and flood-ebb cycle. This is useful for repeating
+            % a dataset and minimising discontinuities.
+            %
+            % If the time series object is shorter than the average spring-
+            % neap cycle an error is raised.
+            %
+          
+            idx = WL.equivalentStartingTidalStageIndex - 1;
+                        
+            WL.truncateByIndex('endIndex', idx);
         end
         
         function h = plot(WL)
