@@ -242,8 +242,14 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
             end
             
             % remove header rows
-            if isempty(startRow) | startRow < 8
-                startRow = 8
+            if isempty(startRow) | startRow < 9
+                % is start row 8 or 9 (different versions)?
+                startRow = 8;
+                try
+                    datenum(allData{startRow,1},'dd/mm/yyyy HH:MM:SS');
+                catch
+                    startRow = 9;
+                end                
             end
             
             allData = allData(startRow:end, :);            
@@ -261,7 +267,6 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
                     tempString=strcat(textData{i,1},' 00:00:00');
                     data.DateTime(i)=datenum(tempString,'dd/mm/yyyy HH:MM:SS');
                 else
-                    textData{i,1};
                     data.DateTime(i)=datenum(textData{i,1},'dd/mm/yyyy HH:MM:SS');
                 end 
             end
