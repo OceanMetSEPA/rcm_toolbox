@@ -682,7 +682,7 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
             grid on;
             
             set(gca, 'XTick', WL.Time(ceil(linspace(1,size(WL.Time,1),5))));
-            set(gca, 'XTickLabel', datestr(WL.Time(ceil(linspace(1,size(WL.Time,1),5))),2));
+            set(gca, 'XTickLabel', datestr(WL.Time(ceil(linspace(1,size(WL.Time,1),5))),20));
             xlabel('Date');
             ylabel('Water level (m)');
             title('Water level and peaks/troughs');
