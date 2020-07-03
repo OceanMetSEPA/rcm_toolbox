@@ -105,7 +105,7 @@ classdef (Abstract) Plotter < handle
             plot(TS.Time, TS.Pressure);
             grid on;
             set(gca, 'XTick', TS.Time(ceil(linspace(1,size(TS.Time,1),5))));
-            set(gca, 'XTickLabel', datestr(TS.Time(ceil(linspace(1,size(TS.Time,1),5))),2));
+            set(gca, 'XTickLabel', datestr(TS.Time(ceil(linspace(1,size(TS.Time,1),5))),20));
             xlabel('Date');
             ylabel('Water level (m)');
 
@@ -114,7 +114,7 @@ classdef (Abstract) Plotter < handle
             grid on;
             hold on;
             set(gca, 'XTick', TS.Time(ceil(linspace(1,size(TS.Time,1),5))));
-            set(gca, 'XTickLabel', datestr(TS.Time(ceil(linspace(1,size(TS.Time,1),5))),2));
+            set(gca, 'XTickLabel', datestr(TS.Time(ceil(linspace(1,size(TS.Time,1),5))),20));
             xlabel('Date');
             ylabel('Current speed (m/s)');
 
@@ -122,7 +122,7 @@ classdef (Abstract) Plotter < handle
             plot(TS.Time, TS.Direction);
             grid on;
             set(gca, 'XTick', TS.Time(ceil(linspace(1,size(TS.Time,1),5))));
-            set(gca, 'XTickLabel', datestr(TS.Time(ceil(linspace(1,size(TS.Time,1),5))),2));
+            set(gca, 'XTickLabel', datestr(TS.Time(ceil(linspace(1,size(TS.Time,1),5))),20));
             xlabel('Date');
             ylabel('Current direction (deg)');
         end
