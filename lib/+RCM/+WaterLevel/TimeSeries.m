@@ -28,7 +28,7 @@ classdef TimeSeries < RCM.TimeSeries.Base & RCM.TimeSeries.TotalTide
               try
                   WL.(varargin{a}) = varargin{a + 1};
               catch
-                  warning([varargin{a}, ' is not a valid property'])
+                 % warning([varargin{a}, ' is not a valid property']) % Disable these warnings
               end
             end
             
