@@ -1,19 +1,19 @@
-classdef Profile < dynamicprops 
+classdef Profile < dynamicprops
     % Class for representing and manipulating current meter data. This class
     % groups together multiple instances of the RCM.TimeSeries class which
     % represent current timeseries records at individual depths, forming a vertical
-    % profile of current data. 
+    % profile of current data.
     %
-    % Instances of this class provide a convenient data structure for storing 
-    % and manipulating current profile data, and some useful methods for producing 
-    % plots. The class extends *dynamicprops* and therefore any other properties 
+    % Instances of this class provide a convenient data structure for storing
+    % and manipulating current profile data, and some useful methods for producing
+    % plots. The class extends *dynamicprops* and therefore any other properties
     % can be added arbitrarily when needed.
     %
     % Individual bins (as RCM.TimeSeries objects) can be added to the profile
     % after instantiation using the .addBin() method. This assumes bins are
     % added from the bed upwards.
     %
-    %  
+    %
     % Usage:
     %
     %    profile = RCM.Profile(varargin);
@@ -27,7 +27,7 @@ classdef Profile < dynamicprops
     %    profile.addBin(timeseries1);
     %    profile.addBin(timeseries2);
     %    ...
-    % 
+    %
     %
     % DEPENDENCIES:
     %
@@ -65,19 +65,19 @@ classdef Profile < dynamicprops
             %
             
             for i = 1:2:length(varargin) % only bother with odd arguments, i.e. the labels
-              switch varargin{i}
-                case 'Easting' % Set easting if passed in explicitly
-                  P.Easting = varargin{i+1};
-                case 'Northing' % Set northing if passed in explicitly
-                  P.Northing = varargin{i+1};
-                case 'SiteName' % Set site name if passed in explicitly
-                  P.SiteName = varargin{i+1};
-                case 'SiteID' % Set site ID if passed in explicitly
-                  P.SiteID = varargin{i+1};
-                case 'WaterDepth' % Set site ID if passed in explicitly
-                  P.WaterDepth = varargin{i+1};
-              end
-            end  
+                switch varargin{i}
+                    case 'Easting' % Set easting if passed in explicitly
+                        P.Easting = varargin{i+1};
+                    case 'Northing' % Set northing if passed in explicitly
+                        P.Northing = varargin{i+1};
+                    case 'SiteName' % Set site name if passed in explicitly
+                        P.SiteName = varargin{i+1};
+                    case 'SiteID' % Set site ID if passed in explicitly
+                        P.SiteID = varargin{i+1};
+                    case 'WaterDepth' % Set site ID if passed in explicitly
+                        P.WaterDepth = varargin{i+1};
+                end
+            end
         end
         
         function P = addBin(P, ts)
@@ -108,7 +108,7 @@ classdef Profile < dynamicprops
         end
         
         function [data] = getAll(P, attribute)
-            % Returns a vector representing the values associated with the passed in 
+            % Returns a vector representing the values associated with the passed in
             % attribute for all 3 time series records in the profile.
             %
             % Usage:
@@ -121,7 +121,7 @@ classdef Profile < dynamicprops
             %   ans =
             %      0.088321924144311        0.0864357076780758        0.0282062904717854
             %
-
+            
             data = zeros(1,P.size);
             
             for i = 1:P.size
@@ -157,15 +157,15 @@ classdef Profile < dynamicprops
             % Compare the first value with each subsequent value in turn
             % Store the comparison as a boolean.
             % Note, we have n-1 comparisons.
-            bools = zeros(1,P.size - 1);            
+            bools = zeros(1,P.size - 1);
             for i = 1:size(bools, 2)
                 bools(1,i) = all(isequal(vals(:,1), vals(:,i+1)));
-            end;
+            end
             
             % Establish is all comparisons are true or not.
             bool = all(bools);
         end
-              
+        
         function set.Easting(P, val)
             % Set the Easting property of the profile to the passed in
             % value and cascades this value down to each of the bins
@@ -213,12 +213,12 @@ classdef Profile < dynamicprops
             %  'Northing'
             %
             
-            if isnan(P.(attribute)) 
+            if isnan(P.(attribute))
                 if P.allEqual(attribute)
                     P.(attribute) = P.first.(attribute);
                 else
                     disp(['Cannot obtain ', attribute,...
-                         ' from bin objects. The attribute is either missing or inconsistent.'])
+                        ' from bin objects. The attribute is either missing or inconsistent.'])
                 end
             else
                 P.setAll(attribute, P.(attribute))
@@ -275,43 +275,84 @@ classdef Profile < dynamicprops
             
             P.Bins(cellfun(@isempty,P.Bins)) = [];
         end
-                   
-        function speedAndDirectionTimeSeries(P, bins)
+        
+        function speedAndDirectionTimeSeries(P, bins,width,height)
             % Generates a time series plot showing the magnitudes and
-            % directions for each depth bin on the profile. Raw and 
+            % directions for each depth bin on the profile. Raw and
             % harmonically reconstructed data is shown on all plots.
             
             binCount = size(bins, 2);
+            % 20210617 - TS tinkered with this code. Issues were:
+            % 1) figure too small - we resize it based on screen size
+            % 2) After call to adjustAxes, had to click on individual
+            % subplots for tick labels to update. adjustAxes replaced by
+            % datetimeAxis which calls datetick (in built matlab function)
+            % 3) zoom only applied to single subplot. Call linkaxes to fix
+            % this.
+            figureHandle=figure;
+            try % to set figure size from input arguments
+                pos=[50,50,width,height];
+            catch % above will fail if these aren't passed. Base them on screen size
+                screenSize=get(0,'screensize');
+                width=screenSize(3);
+                height=screenSize(4);
+                pos=[width/10,150,width/3,2*height/3];    
+            end
+            set(figureHandle,'position',pos)
             
-            figure;
             h = zeros(binCount*2,1);
-            
+            % Bins don't seem to have names- so use ones below. Of course
+            % if we don't have 3 bins we're in trouble!
+            labels={'Sub-Surface','Cage Bottom','Near Bed'};
             % Speed subplots
             for i = 1:binCount
                 % Display in reverse order so that shallow bins are near
                 % the top.
-                
                 h(i)=subplot(binCount*2,1,binCount+1-i);
-                plot(P.Bins{bins(i)}.Time,P.Bins{bins(i)}.Speed,'r');
+                rawHandle=plot(P.Bins{bins(i)}.Time,P.Bins{bins(i)}.Speed,'r','DisplayName','RCM Data');
+                ylabel(h(i),labels{binCount+1-i})
                 hold on
-                plot(P.Bins{bins(i)}.Time, P.Bins{bins(i)}.SpeedTidal,'b');
+                if i==binCount
+                    title('Speed time-series')
+                end
+                tideHandle=plot(P.Bins{bins(i)}.Time, P.Bins{bins(i)}.SpeedTidal,'b','DisplayName','Tidal Component');
                 grid on
             end
             
             % Direction subplots
             for i = 1:binCount
                 h(i+binCount)=subplot(binCount*2,1,(2*binCount)+1-i);
-                plot(P.Bins{bins(i)}.Time,P.Bins{bins(i)}.Direction,'b');
+                plot(P.Bins{bins(i)}.Time,P.Bins{bins(i)}.Direction,'r');
+                ylabel(h(i+binCount),labels{binCount+1-i})
                 hold on
-                plot(P.Bins{bins(i)}.Time, P.Bins{bins(i)}.DirectionTidal,'r');
+                if i==binCount
+                    title('Direction time-series')
+                end
+                plot(P.Bins{bins(i)}.Time, P.Bins{bins(i)}.DirectionTidal,'b');
                 grid on
             end
             
-%             adjustAxes;
-%             linkaxes(h,'x');
-%             pan xon;      
+            linkaxes(h,'x');
+            %            zoom xon
+            legend([rawHandle,tideHandle])
+            % Add title. In Matlab 2018b there is 'suptitle' which does
+            % this. Found this work-around for older matlab versions here:
+            %            https://stackoverflow.com/questions/37013573/how-to-give-a-combined-title-for-subplots
+            % This adds a nice title. But zoom etc no longer works?!
+            %             str=sprintf('Time-series plots for ''%s''',P.SiteName);
+            %             figureHandle.NextPlot = 'add';
+            %             a = axes;
+            %             %             %// Set the title and get the handle to it
+            %             ht = title(str,'fontsize',15,'interpreter','none');
+            %             %             %// Turn the visibility of the axes off
+            %             a.Visible = 'off';
+            %             %             %// Turn the visibility of the title on
+            %             ht.Visible = 'on';
+            %             % Move title up a bit so there's more room for subplot title
+            %             set(ht,'Position',[0.5,1.03,0.5])
+            datetimeAxis
         end
-                
+        
         function scatterPlot3D(P)
             % Generates a 3D scatterplot showing the current vectors for each depth
             % bin on the profile.
@@ -330,32 +371,32 @@ classdef Profile < dynamicprops
                 height(1,1:length(P.Bins{b}.u)) = P.Bins{b}.HeightAboveBed;
                 plot3(P.Bins{b}.u, P.Bins{b}.v, height, colours{mod(b,3)+1});
                 hold on
-                plot3(P.Bins{b}.uTidal, P.Bins{b}.vTidal, height,'.red'); 
+                plot3(P.Bins{b}.uTidal, P.Bins{b}.vTidal, height,'.red');
             end
-                        
+            
             r=0.095;
-            ang=0:0.01:2*pi; 
+            ang=0:0.01:2*pi;
             xp=r*cos(ang);
             yp=r*sin(ang);
             LengthAng=length(ang);
             zp(1:LengthAng)= 0;
             plot3(0+xp,0+yp,zp,'-black');
-
+            
             r1=0.045;
-            ang1=0:0.01:2*pi; 
+            ang1=0:0.01:2*pi;
             xp1=r1*cos(ang1);
             yp1=r1*sin(ang1);
             LengthAng1=length(ang1);
             zp1(1:LengthAng1)= 0;
             plot3(0+xp1,0+yp1,zp1,'-cyan');
-
+            
             grid on
             
             title([P.SiteName,' - 3D Scatter plot'])
         end
         
         function P = calculateHarmonics(P)
-            % Invokes the .calculateHarmonics() method on each of the 
+            % Invokes the .calculateHarmonics() method on each of the
             % timeseries records on the profile.
             
             for i = 1:size(P.Bins, 1)
@@ -371,4 +412,3 @@ classdef Profile < dynamicprops
     end
     
 end
-
