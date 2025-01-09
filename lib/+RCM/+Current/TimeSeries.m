@@ -132,42 +132,42 @@ classdef TimeSeries < RCM.TimeSeries.TotalTide ... % Abstract classes first
     
     properties (SetAccess = public, GetAccess = public)  
         % required for instantiation
-        Speed@double     = [];
-        Direction@double = [];
+        Speed double     = [];
+        Direction double = [];
         
         % optional
-        Pressure@double = [];
+        Pressure double = [];
         HeightAboveBed = NaN;
         
         % Components - derived
-        u@double = [];
-        v@double = [];
-        ParallelComponent@double = [];
-        NormalComponent@double   = [];
+        u double = [];
+        v double = [];
+        ParallelComponent double = [];
+        NormalComponent double   = [];
         
         % Stats - derived
-        MeanSpeed@double            = NaN;
-        MajorAxis@double            = NaN;
-        ParallelAmplitude@double    = NaN;
-        NormalAmplitude@double      = NaN;
-        AmplitudeAnisotropy@double  = NaN;
-        ResidualSpeed@double        = NaN;
-        ResidualDirection@double    = NaN;
+        MeanSpeed double            = NaN;
+        MajorAxis double            = NaN;
+        ParallelAmplitude double    = NaN;
+        NormalAmplitude double      = NaN;
+        AmplitudeAnisotropy double  = NaN;
+        ResidualSpeed double        = NaN;
+        ResidualDirection double    = NaN;
         
-        ResidualConsistentMajorAxis@double = NaN;
-        ResidualMajorAxisAngle@double      = NaN;
+        ResidualConsistentMajorAxis double = NaN;
+        ResidualMajorAxisAngle double      = NaN;
         
         % Tide - derived
         TideCoefficients = [];
-        uTidal@double          = [];
-        vTidal@double          = [];
-        uNonTidal@double       = [];
-        vNonTidal@double       = [];
-        SpeedTidal@double      = [];
-        DirectionTidal@double  = [];
-        SpeedNonTidal@double   = [];
-        DirectionNonTidal@double  = [];
-        Tideyness@double       = NaN;
+        uTidal double          = [];
+        vTidal double          = [];
+        uNonTidal double       = [];
+        vNonTidal double       = [];
+        SpeedTidal double      = [];
+        DirectionTidal double  = [];
+        SpeedNonTidal double   = [];
+        DirectionNonTidal double  = [];
+        Tideyness double       = NaN;
     end
     
     methods(Static = true)
