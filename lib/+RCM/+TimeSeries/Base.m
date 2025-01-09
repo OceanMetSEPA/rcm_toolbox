@@ -21,12 +21,12 @@ classdef Base < dynamicprops
     %
     
     properties 
-        Time@double = [];
+        Time double = [];
         
-        Easting@double   = NaN;
-        Northing@double  = NaN;
-        Latitude@double  = NaN;
-        Longitude@double = NaN;
+        Easting double   = NaN;
+        Northing double  = NaN;
+        Latitude double  = NaN;
+        Longitude double = NaN;
     end
     
     methods (Static = true)
