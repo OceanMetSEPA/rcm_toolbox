@@ -284,10 +284,10 @@ classdef TimeSeries_new2025 < RCM.TimeSeries.TotalTide ... % Abstract classes fi
             dt=allData(startRow:l,dateColumn);
 
             % Speed / direction / Depth:
-            numColumns=5:7;
+            numColumns=5:8;
             numberData=allData(startRow:l,numColumns);
             numberData=table2array(numberData);
-            numberTable=array2table(numberData,'VariableNames',["Speed","Direction","Depth"]);
+            numberTable=array2table(numberData,'VariableNames',["Speed","Direction","CorrDirection","Depth"]);
 
             % Combine date/sdd into single table:
             rawSpeedTable=[dt,numberTable];
@@ -320,7 +320,7 @@ classdef TimeSeries_new2025 < RCM.TimeSeries.TotalTide ... % Abstract classes fi
             data.DateTime  = data.DateTime'; % transpose to make consistent
             data.Speed     = numData(:,1);
             data.Direction = numData(:,2);
-            data.Pressure  = numData(:,3);
+            data.Pressure  = numData(:,4);
 
             TS = RCM.Current.TimeSeries_new2025.create(data.DateTime,data.Speed,data.Direction);
 
