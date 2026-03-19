@@ -795,7 +795,7 @@ classdef Base < dynamicprops
             % the set .Easting and .Northing properties
             
             if ~(TS.Easting == 0) & ~(TS.Northing == 0)
-                [TS.Longitude,TS.Latitude] = OS.convertAndTransform(TS.Easting, TS.Northing,'from','EN','to','LL');
+                [TS.Longitude,TS.Latitude] = OS.catCoordinates(TS.Easting, TS.Northing,'from','EN','to','LL');
             end
         end
      end
